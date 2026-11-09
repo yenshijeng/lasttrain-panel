@@ -107,11 +107,11 @@ function djb(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i
 
 // ===== 型錄 =====
 var W={
- blade:{n:'近戰刃',tn:['標準','高頻振動刀'],r:1,d:[18,28],cost:[100,400],melee:true},
- shotgun:{n:'霰彈槍',tn:['標準','精良'],r:2,d:[20,30],cost:[200,450]},
- pistol:{n:'手槍',tn:['標準','精良'],r:4,d:[10,14],cost:[0,150]},
- rifle:{n:'步槍',tn:['標準','精良'],r:5,d:[14,20],cost:[300,600]},
- sniper:{n:'狙擊槍',tn:['標準'],r:8,min:2,d:[24],cost:[450]}
+ blade:{n:'近戰',tn:['戰術刀','高頻振動刀','電漿刃'],r:1,d:[18,28,42],cost:[100,400,2500],melee:true},
+ shotgun:{n:'霰彈槍',tn:['泵動式霰彈槍','電磁霰彈槍','脈衝散射槍'],r:2,d:[20,30,44],cost:[200,450,2800]},
+ pistol:{n:'手槍',tn:['制式手槍','智慧手槍','雷射手槍'],r:4,d:[10,15,24],cost:[0,250,2200]},
+ rifle:{n:'步槍',tn:['突擊步槍','電磁步槍','粒子步槍'],r:5,d:[14,21,32],cost:[300,600,3200]},
+ sniper:{n:'狙擊',tn:['狙擊步槍','磁軌狙擊槍','光束狙擊炮'],r:8,min:2,d:[24,34,50],cost:[450,800,3800]}
 };
 var AR={vest:{n:'防彈背心',a:2,cost:0,note:'小幅減傷'},tac:{n:'戰術護甲',a:5,cost:250,note:'中幅減傷'},exo:{n:'外骨骼護甲',a:9,cost:600,mv:-1,note:'大幅減傷，移動少一格'}};
 var IMP={
@@ -121,10 +121,21 @@ var IMP={
  torso:{n:'軀幹',fx:['減傷＋2','減傷＋4','減傷＋6']},
  nerve:{n:'神經',fx:['攻擊後 15% 機率多一次行動','攻擊後 30% 機率多一次行動','攻擊後 45% 機率多一次行動']}
 };
+function wn(w){return W[w.k].tn[w.t-1]}
+var TIER=['','現代','強化科技','科幻'];
 var IMP_T=['','基礎','進階','頂級'],IMP_COST=[0,150,400,1000],LV_COST={2:200,3:500,4:1000,5:2000};
 var ITEM={spray:{n:'急救噴劑',c:20,note:'回復 40 生命；對相鄰倒地的人使用可立刻救起'},smoke:{n:'煙霧彈',c:20,note:'3×3 範圍變成掩體，持續 2 回合'},grenade:{n:'手雷',c:30,note:'3×3 範圍 25 點傷害（小心隊友）'},ammo:{n:'特殊彈藥',c:40,note:'本場戰鬥全隊打得到怨靈等特殊敵人'}};
 var ROOM_OPEN=300;
-var ZONES={train:{n:'訓練室',c:300},lounge:{n:'會客區',c:200},bar:{n:'私人吧台',c:300},bench:{n:'工作台',c:400},bath:{n:'浴室',c:200}};
+var ZONES={
+ med:{n:'醫療艙',c:500,fx:'重傷隊友回車就治好，不用缺席下一站'},
+ train:{n:'訓練室',c:400,fx:'隊友戰鬥傷害＋20%'},
+ bench:{n:'工作台',c:400,fx:'賣素材和他人義體多拿 20% 積分'},
+ kitchen:{n:'廚房',c:300,fx:'可以自己煮飯；邀人吃飯時好感比較容易提升'},
+ bed:{n:'大臥室',c:200,fx:'可以留宿'},
+ bath:{n:'浴室',c:200,fx:'私密的盥洗空間'},
+ view:{n:'觀景窗',c:300,fx:'看列車穿過世界之間的光'},
+ lounge:{n:'會客區',c:200,fx:'可以邀請隊伍以外的人來坐'}};
+function hasZ(k){return S.room.open&&S.room.zones.indexOf(k)>=0}
 var STYLES=['狙擊','突擊','護衛','支援','偵查'];
 var STYLE_W={'狙擊':'sniper','突擊':'shotgun','護衛':'rifle','支援':'pistol','偵查':'pistol'};
 var BOND=['陌生','普通','信任','親密'];
@@ -171,11 +182,11 @@ var TAIL='\n（以上是手環資料：數值以此為準，不要自行計算�
 function compact(){
  var o={'站':S.station.no,'位置':S.station.onTrain?'列車上':'任務世界：'+S.station.world,'等級':S.lv,'生命':S.hp+'/'+maxHp(),'積分':S.pts};
  if(!S.station.onTrain){o['回收目標']=S.station.target;o['距發車']=S.station.hours+'小時'}
- o['武器']=S.weapons.map(function(w,i){return W[w.k].n+'（'+W[w.k].tn[w.t-1]+'）'+(i===S.active?'★':'')});
+ o['武器']=S.weapons.map(function(w,i){return wn(w)+'（'+TIER[w.t]+'）'+(i===S.active?'★':'')});
  o['護具']=AR[S.armor].n;
  var im={};for(var k in S.imp)if(S.imp[k])im[IMP[k].n]=IMP_T[S.imp[k]];if(Object.keys(im).length)o['義體']=im;
  var it={};for(var k2 in S.items)if(S.items[k2])it[ITEM[k2].n]=S.items[k2];if(Object.keys(it).length)o['道具']=it;
- o['房間']=S.room.open?('有（'+(S.room.zones.map(function(z){return ZONES[z].n}).join('、')||'基本單人房')+'）'):'無（住通鋪）';
+ o['房間']=S.room.open?('有（'+(S.room.zones.filter(function(z){return ZONES[z]}).map(function(z){return ZONES[z].n}).join('、')||'基本單人房')+'）'):'無（住通鋪）';
  o['隊伍']=partyList().map(function(p){return{'名':p.name,'風格':p.style,'好感':BOND[p.bond],'狀態':stName(p.state),'門卡':p.fixed?'有':'無'}});
  var others=S.roster.filter(function(r){return S.party.indexOf(r.name)<0&&r.state!=='dead'});if(others.length)o['不在隊上的熟人']=others.map(function(p){return p.name+'（'+stName(p.state)+(p.fixed?'，有門卡':'')+'）'});
  var dead=S.roster.filter(function(r){return r.state==='dead'});if(dead.length)o['已死亡']=dead.map(function(p){return p.name});
@@ -211,16 +222,16 @@ function ingest(text){
 function apply(ev){var t=ev&&ev.type;
  switch(t){
  case 'arrive':{var no=parseInt(ev.no,10)||S.station.no+1;S.station={no:no,world:String(ev.world||'未知世界').slice(0,40),target:String(ev.target||'').slice(0,60),hours:clamp(parseInt(ev.hours,10)||24,1,72),onTrain:false};
-  S.party.forEach(function(n){var p=person(n);if(p&&p.state==='injured')p.state='resting'});
+  S.roster.forEach(function(p){if(p.state==='injured')p.state='resting'});
   log('抵達第'+no+'站：'+S.station.world);tabDot('task');return '抵達第'+no+'站'}
  case 'time':{S.station.hours=clamp(parseFloat(ev.hours)||0,0,72);return '距發車 '+S.station.hours+' 小時'}
- case 'points':{var n=parseInt(ev.n,10)||0,cap=capFor(S.station.no||1);n=clamp(n,-500,cap);S.pts=Math.max(0,S.pts+n);log((n>=0?'獲得':'扣除')+' '+Math.abs(n)+' 積分：'+(ev.why||''));return (n>=0?'+':'')+n+' 積分'}
+ case 'points':{var n=parseInt(ev.n,10)||0,cap=capFor(S.station.no||1);n=clamp(n,-500,cap);var bonus=(ev.kind==='sell'&&n>0&&hasZ('bench'))?Math.round(n*0.2):0;n+=bonus;if(bonus)ev.why=(ev.why||'')+'（工作台＋'+bonus+'）';S.pts=Math.max(0,S.pts+n);log((n>=0?'獲得':'扣除')+' '+Math.abs(n)+' 積分：'+(ev.why||''));return (n>=0?'+':'')+n+' 積分'}
  case 'hp':{var d=clamp(parseInt(ev.n,10)||0,-30,30);S.hp=clamp(S.hp+d,1,maxHp());log('生命 '+(d>=0?'+':'')+d+'：'+(ev.why||''));return '生命 '+(d>=0?'+':'')+d}
  case 'board':{S.station.onTrain=true;S.station.hours=0;S.hp=maxHp();
   S.party=S.party.filter(function(n){var p=person(n);if(!p)return false;if(p.state==='resting')p.state='ok';if(p.state==='injured'){}return p.fixed&&p.state!=='dead'});
   S.roster.forEach(function(p){if(p.state==='resting'&&S.party.indexOf(p.name)<0)p.state='ok'});
-  S.roster.forEach(function(p){if(p.state==='injured')p.state='injured'});
-  log('回到列車（第'+S.station.no+'站結束）');return '回到列車，生命回滿'}
+  var healed=[];if(hasZ('med'))S.roster.forEach(function(p){if(p.state==='injured'){p.state='ok';healed.push(p.name)}});if(healed.length)note('醫療艙治好了'+healed.join('、')+'的重傷');
+  log('回到列車（第'+S.station.no+'站結束）'+(healed.length?'，醫療艙治好 '+healed.join('、'):''));return '回到列車，生命回滿'+(healed.length?'；醫療艙治好 '+healed.join('、'):'')}
  case 'ally_join':{var nm=String(ev.name||'').trim().slice(0,12);if(!nm)throw new Error('隊友沒有名字');
   var p=person(nm);if(p&&p.state==='dead')throw new Error(nm+'已死亡');
   if(S.party.indexOf(nm)>=0)return null;
@@ -246,7 +257,8 @@ function apply(ev){var t=ev&&ev.type;
 
 // ===== UI 基礎 =====
 var TAB='stat',dots={};
-var TABS=[['stat','狀態'],['gear','裝備'],['task','任務'],['shop','商店'],['fight','戰鬥'],['sys','⚙']];
+var TABS0=[['stat','狀態'],['gear','裝備'],['task','任務'],['shop','商店'],['room','房間'],['fight','戰鬥'],['sys','⚙']];
+function TABS_(){return TABS0.filter(function(t){return t[0]!=='room'||S.room.open})}
 function tabDot(k){if(k!==TAB)dots[k]=1}
 function toast(t){var el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(function(){el.classList.remove('on')},2600)}
 function modal(html){$('mbox').innerHTML=html;$('modal').classList.add('on')}
@@ -259,10 +271,10 @@ function chips(){if(!S.started){$('chips').innerHTML='<span class="chip">尚未�
  if(S.dead)c='<span class="chip" style="color:var(--red)">本局結束</span>'+c;
  $('chips').innerHTML=c}
 function render(){chips();
- $('tabs').innerHTML=S.started?TABS.map(function(t){return '<button data-tab="'+t[0]+'" class="'+(t[0]===TAB?'on':'')+(dots[t[0]]?' dot':'')+'">'+t[1]+'</button>'}).join(''):'';
+ $('tabs').innerHTML=S.started?TABS_().map(function(t){return '<button data-tab="'+t[0]+'" class="'+(t[0]===TAB?'on':'')+(dots[t[0]]?' dot':'')+'">'+t[1]+'</button>'}).join(''):'';
  var v=$('view');
  if(!S.started){v.innerHTML=setupHtml();bindSetup();return}
- v.innerHTML=({stat:statHtml,gear:gearHtml,task:taskHtml,shop:shopHtml,fight:fightHtml,sys:sysHtml}[TAB]||statHtml)();
+ v.innerHTML=({stat:statHtml,gear:gearHtml,task:taskHtml,shop:shopHtml,room:roomHtml,fight:fightHtml,sys:sysHtml}[TAB]||statHtml)();
  if(TAB==='fight')bindFight();
 }
 document.addEventListener('click',function(e){var b=e.target.closest('[data-tab]');if(b){setTab(b.dataset.tab);return}
@@ -291,7 +303,7 @@ function draftForm(){var used=draft.map(function(d){return d.avatar});var sel=po
 // ===== 分頁內容 =====
 function statHtml(){
  var h='';if(S.dead)h+='<div class="card dead">你死了。這一局已經結束。可以把結果送回劇情，讓故事寫完結局；要重玩請到 ⚙ 重新開始。</div>';
- h+='<h3>身體狀況</h3><div class="card"><div class="row"><span>名字</span><b>'+esc(S.name)+'</b></div><div class="row"><span>等級</span><span>Lv.'+S.lv+'（可裝 '+S.lv+' 個義體部位）</span></div><div class="row"><span>生命</span><span>'+S.hp+' / '+maxHp()+'</span></div><div class="bar"><i style="width:'+Math.round(S.hp/maxHp()*100)+'%"></i></div><div class="row"><span>積分</span><b style="color:var(--amb)">'+S.pts+'</b></div><div class="row"><span>房間</span><span>'+(S.room.open?'有（'+(S.room.zones.map(function(z){return ZONES[z].n}).join('、')||'基本單人房')+'）':'無，住通鋪')+'</span></div></div>';
+ h+='<h3>身體狀況</h3><div class="card"><div class="row"><span>名字</span><b>'+esc(S.name)+'</b></div><div class="row"><span>等級</span><span>Lv.'+S.lv+'（可裝 '+S.lv+' 個義體部位）</span></div><div class="row"><span>生命</span><span>'+S.hp+' / '+maxHp()+'</span></div><div class="bar"><i style="width:'+Math.round(S.hp/maxHp()*100)+'%"></i></div><div class="row"><span>積分</span><b style="color:var(--amb)">'+S.pts+'</b></div><div class="row"><span>房間</span><span>'+(S.room.open?'有（'+(S.room.zones.filter(function(z){return ZONES[z]}).map(function(z){return ZONES[z].n}).join('、')||'基本單人房')+'）':'無，住通鋪')+'</span></div></div>';
  h+='<h3>隊伍（'+S.party.length+'/3）</h3><div class="card">';
  var pl=partyList();if(!pl.length)h+='<div class="mut">目前一個人行動。在劇情裡邀請別人同行，對方答應後會出現在這裡。</div>';
  pl.forEach(function(p){h+=allyRow(p)});h+='</div>';
@@ -302,7 +314,7 @@ function statHtml(){
 function allyRow(p){return '<div class="ally">'+avatarHtml(p)+'<div style="flex:1"><b>'+esc(p.name)+'</b><span class="tag">'+esc(p.style)+'</span><span class="tag">'+BOND[p.bond]+'</span>'+(p.fixed?'<span class="tag fix">門卡</span>':'')+'<span class="tag '+(p.state==='ok'?'ok':'bad')+'">'+stName(p.state)+'</span><div class="mut">'+esc(W[p.weapon]?W[p.weapon].n:'')+(p.friction&&p.friction.length?'｜跟 '+esc(p.friction.join('、'))+' 不和':'')+'</div></div></div>'}
 function gearHtml(){
  var h='<h3>武器（身上最多帶兩把，★＝正在用）</h3><div class="card">';
- S.weapons.forEach(function(w,i){var d=W[w.k];h+='<div class="shop-item"><div class="nm">'+(i===S.active?'★ ':'')+d.n+'（'+d.tn[w.t-1]+'）<small>射程 '+d.r+'｜傷害 '+d.d[w.t-1]+(d.min?'｜敵人貼身時不能用':'')+'</small></div>'+(i!==S.active?'<button class="btn" data-act="equip" data-arg="'+i+'">換用</button>':'')+'</div>'});
+ S.weapons.forEach(function(w,i){var d=W[w.k];h+='<div class="shop-item"><div class="nm">'+(i===S.active?'★ ':'')+wn(w)+'<small>'+d.n+'・'+TIER[w.t]+'｜射程 '+d.r+'｜傷害 '+d.d[w.t-1]+(d.min?'｜敵人貼身時不能用':'')+'</small></div>'+(i!==S.active?'<button class="btn" data-act="equip" data-arg="'+i+'">換用</button>':'')+'</div>'});
  h+='<div class="mut">戰鬥中換武器不算行動。</div></div>';
  var a=AR[S.armor];h+='<h3>護具</h3><div class="card"><div class="row"><span>'+a.n+'</span><span>減傷 '+a.a+(a.mv?'｜移動 '+a.mv:'')+'</span></div></div>';
  h+='<h3>義體（已裝 '+slotsUsed()+' / '+S.lv+' 個部位）</h3><div class="card">';
@@ -320,7 +332,7 @@ function shopHtml(){var h='';var on=S.station.onTrain&&!S.dead;
  if(!on)h+='<div class="card mut">'+(S.dead?'本局已結束。':'你在任務世界裡，商店與改裝區要回到列車上才能使用。')+'</div>';
  h+='<h3>補給品</h3><div class="card">';for(var k in ITEM)h+=shopRow(ITEM[k].n,ITEM[k].note,ITEM[k].c,'buyItem',k,on);h+='</div>';
  h+='<h3>武器</h3><div class="card">';
- for(var wk in W){var d=W[wk];for(var t=1;t<=d.d.length;t++){if(wk==='pistol'&&t===1)continue;var have=S.weapons.some(function(w){return w.k===wk&&w.t>=t});h+=shopRow(d.n+'（'+d.tn[t-1]+'）','射程 '+d.r+'｜傷害 '+d.d[t-1]+(d.min?'｜貼身不能用':''),d.cost[t-1],'buyWeapon',wk+':'+t,on&&!have,have?'已擁有':'')}}
+ for(var t=1;t<=3;t++){h+='<div class="mut" style="margin:8px 0 2px;color:var(--amb)">'+TIER[t]+(t===3?'｜打得到怨靈等特殊敵人、無視一半掩體':'')+'</div>';for(var wk in W){var d=W[wk];if(wk==='pistol'&&t===1)continue;var have=S.weapons.some(function(w){return w.k===wk&&w.t>=t});h+=shopRow(d.tn[t-1],d.n+'｜射程 '+d.r+'｜傷害 '+d.d[t-1]+(d.min?'｜貼身不能用':''),d.cost[t-1],'buyWeapon',wk+':'+t,on&&!have,have?'已擁有':'')}}
  h+='<div class="mut">身上只能帶兩把。買第三把時要選一把丟掉。</div></div>';
  h+='<h3>護具（只能穿一件）</h3><div class="card">';for(var ak in AR){if(ak==='vest')continue;h+=shopRow(AR[ak].n,AR[ak].note+'｜減傷 '+AR[ak].a,AR[ak].cost,'buyArmor',ak,on&&S.armor!==ak,S.armor===ak?'穿著中':'')}h+='</div>';
  h+='<h3>改裝區・義體</h3><div class="card"><div class="mut">已裝 '+slotsUsed()+' / '+S.lv+' 個部位。換高階不佔新位置。</div>';
@@ -330,8 +342,16 @@ function shopHtml(){var h='';var on=S.station.onTrain&&!S.dead;
  h+='<h3>升級</h3><div class="card">'+(S.lv>=5?'<div class="mut">已經是最高等級。</div>':shopRow('升到 Lv.'+(S.lv+1),'多一個義體部位，生命上限＋20',LV_COST[S.lv+1],'levelUp','',on))+'</div>';
  h+='<h3>房間（門後的摺疊空間）</h3><div class="card">';
  if(!S.room.open)h+=shopRow('開設小單人房','屬於你的空間；之後才能發門卡給別人',ROOM_OPEN,'openRoom','',on);
- else for(var zk in ZONES){var hz=S.room.zones.indexOf(zk)>=0;h+=shopRow('擴建：'+ZONES[zk].n,'',ZONES[zk].c,'buyZone',zk,on&&!hz,hz?'已擴建':'')}
+ else h+='<div class="mut">房間已開設。擴建、門卡與邀請請到「房間」分頁。</div><button class="btn wide" data-tab="room">前往房間</button>';
  h+='</div>';return h}
+function roomHtml(){if(!S.room.open)return '<div class="card mut">你還沒有房間。</div>';var on=S.station.onTrain&&!S.dead,h='';
+ var zs=S.room.zones.filter(function(z){return ZONES[z]});
+ h+='<div class="card" style="text-align:center;padding:18px 12px;background:linear-gradient(180deg,#141c26,#0d131b)"><div style="margin:0 auto 10px;width:96px;height:140px;border:2px solid #4a5a6e;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#26313f,#1a222c);position:relative;box-shadow:0 0 18px rgba(232,197,106,.15)"><div style="position:absolute;right:12px;top:66px;width:8px;height:8px;border-radius:50%;background:var(--amb)"></div><div style="position:absolute;left:0;right:0;top:12px;font-size:11px;color:var(--mut)">'+esc(S.name)+'</div></div><div class="mut">門後的摺疊空間｜'+(zs.length?zs.length+' 個功能區':'基本單人房')+'</div></div>';
+ h+='<h3>門卡（'+S.roster.filter(function(r){return r.fixed}).length+'/3）</h3><div class="card">';
+ var holders=S.roster.filter(function(r){return r.fixed});for(var i=0;i<3;i++){var p=holders[i];h+=p?'<div class="ally">'+avatarHtml(p)+'<div style="flex:1"><b>'+esc(p.name)+'</b><span class="tag">'+BOND[p.bond]+'</span><span class="tag '+(p.state==='ok'?'ok':'bad')+'">'+stName(p.state)+'</span></div><button class="btn red" data-act="revoke" data-arg="'+esc(p.name)+'">收回</button></div>':'<div class="ally"><div class="av">－</div><div class="mut" style="flex:1">空著。在劇情裡把門卡交給在意的人，對方收下後會出現在這裡。</div></div>'}
+ h+='</div><button class="btn amb wide" data-act="invite">邀請某人到房間</button>';
+ h+='<h3>功能區</h3><div class="card">';for(var zk in ZONES){var hz=zs.indexOf(zk)>=0;h+=shopRow(ZONES[zk].n,ZONES[zk].fx,ZONES[zk].c,'buyZone',zk,on&&!hz,hz?'已擴建':'')}
+ h+=(on?'':'<div class="mut">回到列車上才能擴建。</div>')+'</div>';return h}
 function shopRow(n,sub,c,act,arg,ok,done){return '<div class="shop-item"><div class="nm">'+esc(n)+(sub?'<small>'+esc(sub)+'</small>':'')+'</div>'+(done?'<span class="mut">'+done+'</span>':'<span class="price">'+c+'</span><button class="btn" data-act="'+act+'" data-arg="'+arg+'" '+(ok&&S.pts>=c?'':'disabled')+'>買</button>')+'</div>'}
 function sysHtml(){return '<h3>存檔</h3><div class="card"><div class="mut">存檔放在這台裝置的這個瀏覽器。換裝置前先匯出存檔碼，到新裝置匯入。</div><textarea id="io" placeholder="存檔碼"></textarea><div class="btns"><button class="btn" data-act="exp">匯出</button><button class="btn" data-act="imp">匯入</button></div></div>'+
  '<h3>手動貼上 AI 區塊</h3><div class="card"><div class="mut">如果手環沒自動讀到 AI 回覆裡的 lasttrain 區塊，把那段複製貼在這裡。</div><textarea id="man"></textarea><button class="btn wide" data-act="manual">套用</button></div>'+
@@ -359,14 +379,19 @@ var ACT={
   var same=S.weapons.findIndex(function(w){return w.k===k});
   if(same>=0){if(!pay(c))return;S.weapons[same].t=t;fin();return}
   if(S.weapons.length<2){if(!pay(c))return;S.weapons.push({k:k,t:t});fin();return}
-  modal('<h3>身上只能帶兩把</h3><div class="mut">買 '+d.n+' 要丟掉哪一把？丟掉的武器不會退積分。</div><div class="btns">'+S.weapons.map(function(w,i){return '<button class="btn" data-act="swapW" data-arg="'+i+'|'+arg+'">丟掉 '+W[w.k].n+'</button>'}).join('')+'<button class="btn" data-act="close">取消</button></div>');
-  function fin(){log('購買 '+d.n+'（'+d.tn[t-1]+'）');note('買了'+d.n+'（'+d.tn[t-1]+'）');persist();render();toast('買了 '+d.n)}},
- swapW:function(arg){var a=arg.split('|'),i=+a[0],p=a[1].split(':'),k=p[0],t=+p[1],d=W[k];if(!pay(d.cost[t-1]))return;var old=W[S.weapons[i].k].n;S.weapons[i]={k:k,t:t};log('丟掉 '+old+'，購買 '+d.n);note('丟掉'+old+'，買了'+d.n);closeModal();persist();render()},
+  modal('<h3>身上只能帶兩把</h3><div class="mut">買 '+d.tn[t-1]+' 要丟掉哪一把？丟掉的武器不會退積分。</div><div class="btns">'+S.weapons.map(function(w,i){return '<button class="btn" data-act="swapW" data-arg="'+i+'|'+arg+'">丟掉 '+wn(w)+'</button>'}).join('')+'<button class="btn" data-act="close">取消</button></div>');
+  function fin(){log('購買 '+d.tn[t-1]);note('買了'+d.tn[t-1]);persist();render();toast('買了 '+d.tn[t-1])}},
+ swapW:function(arg){var a=arg.split('|'),i=+a[0],p=a[1].split(':'),k=p[0],t=+p[1],d=W[k];if(!pay(d.cost[t-1]))return;var old=wn(S.weapons[i]);S.weapons[i]={k:k,t:t};log('丟掉 '+old+'，購買 '+d.tn[t-1]);note('丟掉'+old+'，買了'+d.tn[t-1]);closeModal();persist();render()},
  buyArmor:function(k){if(!pay(AR[k].cost))return;S.armor=k;log('購買 '+AR[k].n);note('換上'+AR[k].n);persist();render()},
  buyImp:function(k){var nt=S.imp[k]+1;if(!S.imp[k]&&slotsUsed()>=S.lv){toast('義體部位已滿，先升級');return}if(!pay(IMP_COST[nt]))return;S.imp[k]=nt;log('改裝艙：安裝 '+IMP[k].n+'（'+IMP_T[nt]+'）');note('剛進改裝艙完成手術：'+IMP[k].n+'義體（'+IMP_T[nt]+'）');persist();render();toast('改裝完成：'+IMP[k].n+'（'+IMP_T[nt]+'）')},
  levelUp:function(){var c=LV_COST[S.lv+1];if(!pay(c))return;S.lv++;S.hp=maxHp();log('升到 Lv.'+S.lv);note('升到 Lv.'+S.lv);persist();render();toast('升到 Lv.'+S.lv)},
  openRoom:function(){if(!pay(ROOM_OPEN))return;S.room.open=true;log('開設了自己的房間');note('開設了自己的房間（門後的摺疊空間），從此不用睡通鋪，也可以發門卡給別人');persist();render();toast('房間開好了')},
- buyZone:function(k){if(!pay(ZONES[k].c))return;S.room.zones.push(k);log('房間擴建：'+ZONES[k].n);note('房間擴建了'+ZONES[k].n);persist();render()},
+ buyZone:function(k){if(!pay(ZONES[k].c))return;S.room.zones.push(k);log('房間擴建：'+ZONES[k].n);note('房間擴建了'+ZONES[k].n+'（'+ZONES[k].fx+'）');persist();render();toast('擴建完成：'+ZONES[k].n)},
+ revoke:function(n){var p=person(n);if(!p)return;modal('<div data-lock><h3>收回 '+esc(n)+' 的門卡？</h3><div class="mut">'+esc(n)+' 會搬出你的房間，也不再是固定隊友。這會寫進劇情，對方會有反應。</div><div class="btns"><button class="btn red" data-act="doRevoke" data-arg="'+esc(n)+'">收回</button><button class="btn" data-act="close">取消</button></div></div>')},
+ doRevoke:function(n){var p=person(n);closeModal();if(!p)return;p.fixed=false;S.party=S.party.filter(function(x){return x!==n});log('收回了 '+n+' 的門卡');note('玩家收回了'+n+'的門卡，'+n+'必須搬出房間、不再是固定隊友（請寫出'+n+'的反應）');persist();render();toast('已收回 '+n+' 的門卡，下次發言時會寫進劇情')},
+ invite:function(){var list=S.roster.filter(function(r){return r.state!=='dead'});var names=list.map(function(r){return r.name});['葉綰秋','溫栩栩','祁洛璃','闕寒汐','章牧野','車掌'].forEach(function(n){if(names.indexOf(n)<0)names.push(n)});
+  modal('<h3>邀請誰到你的房間？</h3><div class="mut">選好後會在聊天框填入邀請，你可以再補一句想做什麼，然後送出。</div><div class="btns">'+names.map(function(n){return '<button class="btn" data-act="doInvite" data-arg="'+esc(n)+'">'+esc(n)+'</button>'}).join('')+'</div><label>或輸入名字</label><input id="inv-name" maxlength="12"><div class="btns"><button class="btn amb" data-act="doInvite">邀請</button><button class="btn" data-act="close">取消</button></div>')},
+ doInvite:function(n){n=n||($('inv-name')?$('inv-name').value.trim():'');if(!n){toast('請選一個人');return}closeModal();var t='我邀請'+n+'到我的房間。';post({t:'fill',text:t,send:false});if(!P)toast('（測試模式）'+t)},
  exp:function(){$('io').value=btoa(unescape(encodeURIComponent(JSON.stringify(S))));$('io').select();toast('已匯出，請複製存檔碼')},
  imp:function(){try{var o=JSON.parse(decodeURIComponent(escape(atob($('io').value.trim()))));if(!o||o.v!==1)throw 0;S=o;persist();render();toast('匯入完成')}catch(e){toast('存檔碼不正確')}},
  manual:function(){var r=ingest($('man').value);toast(r.status==='done'?'已套用':r.msg)},
@@ -376,14 +401,14 @@ var ACT={
  tourNext:function(i){showTour(+i)},
  tourEnd:function(){S.tourDone=true;persist();closeModal()}
 };
-var TOUR=[['⌚ 手環','這是你的終端。上方隨時顯示生命、積分和距離發車的時間。'],['狀態','你的身體、等級、房間，以及跟你同行的隊友。'],['裝備','武器、護具、義體和道具。戰鬥中換武器不算行動。'],['任務','這一站的世界、要帶回的東西，以及發車倒數。'],['商店','回到列車上才能用：補給品、武器、護具、義體、升級、房間。'],['戰鬥','劇情裡開打時會自動跳到這裡。打完按「回到劇情」，故事就會接著寫下去。'],['怎麼玩','平常直接在聊天框打字就好，手環會自動把你的狀態附給 AI。右上角「回聊天」可以收起手環。']];
+var TOUR=[['⌚ 手環','這是你的終端。上方隨時顯示生命、積分和距離發車的時間。'],['狀態','你的身體、等級、房間，以及跟你同行的隊友。'],['裝備','武器、護具、義體和道具。戰鬥中換武器不算行動。'],['任務','這一站的世界、要帶回的東西，以及發車倒數。'],['商店','回到列車上才能用：補給品、武器、護具、義體、升級、房間。'],['房間','開設房間後才會出現：擴建功能區、管理門卡、邀請別人來。'],['戰鬥','劇情裡開打時會自動跳到這裡。打完按「回到劇情」，故事就會接著寫下去。'],['怎麼玩','平常直接在聊天框打字就好，手環會自動把你的狀態附給 AI。右上角「回聊天」可以收起手環。']];
 function showTour(i){i=i||0;var t=TOUR[i];modal('<div class="tour" data-lock><h4>'+t[0]+'（'+(i+1)+'/'+TOUR.length+'）</h4><div>'+t[1]+'</div><div class="btns">'+(i<TOUR.length-1?'<button class="btn amb" data-act="tourNext" data-arg="'+(i+1)+'">下一步</button><button class="btn" data-act="tourEnd">略過</button>':'<button class="btn amb" data-act="tourEnd">開始</button>')+'</div></div>')}
 
 // ===== 戰鬥 =====
 var B=null;
 function playerStats(){var w=S.weapons[S.active]||S.weapons[0],d=W[w.k];
  var dmg=d.d[w.t-1]+(d.melee?[0,4,8,12][S.imp.arm]:0),r=d.r+[0,1,1,2][S.imp.eye],mv=3+[0,1,2,2][S.imp.leg]+(AR[S.armor].mv||0),armor=AR[S.armor].a+[0,2,4,6][S.imp.torso];
- return{dmg:dmg,r:r,min:d.min||0,mv:Math.max(1,mv),armor:armor,melee:!!d.melee}}
+ return{dmg:dmg,r:r,min:d.min||0,mv:Math.max(1,mv),armor:armor,melee:!!d.melee,sci:w.t===3}}
 function scaleFor(no){return 1+0.06*Math.max(0,(no||1)-1)}
 // 敵人名稱容錯：「變異喪屍」「巨大異形」等 → 找出基本種類並加強
 function enemyStat(k){if(EN[k])return EN[k];var base=Object.keys(EN).sort(function(a,b){return b.length-a.length}).find(function(x){return k.indexOf(x)>=0});
@@ -422,10 +447,10 @@ function killVal(k){var t=enemyStat(k);var hp=t.hp*scaleFor(S.station.no);return
 function initBattle(){var sb=S.battle,map=MAPS[sb.ter].slice(),ps=playerStats(),sc=scaleFor(S.station.no);
  var units=[],free=function(x,y){return y>=0&&y<8&&x>=0&&x<6&&map[y][x]!=='#'&&!units.some(function(u){return u.x===x&&u.y===y})};
  function place(u,rows){for(var tries=0;tries<200;tries++){var y=rows[Math.floor(Math.random()*rows.length)],x=Math.floor(Math.random()*6);if(free(x,y)){u.x=x;u.y=y;units.push(u);return}}}
- var pu={id:'P',side:'p',name:S.name,hp:S.hp,max:maxHp(),dmg:ps.dmg,r:ps.r,min:ps.min,mv:ps.mv,armor:ps.armor,melee:ps.melee};
+ var pu={id:'P',side:'p',name:S.name,hp:S.hp,max:maxHp(),dmg:ps.dmg,r:ps.r,min:ps.min,mv:ps.mv,armor:ps.armor,melee:ps.melee,sci:ps.sci};
  var ex=-1;for(var c=0;c<6;c++)if(map[7][c]==='E'||map[6][c]==='E'){ex=c;break}
  if(free(2,6))place(pu,[6]);else place(pu,[6,7,5]);
- sb.allies.forEach(function(n,i){var p=person(n),w=W[p.weapon]||W.pistol;place({id:'A'+i,side:'a',name:p.name,ref:p.name,hp:80,max:80,dmg:w.d[0],r:w.r,min:w.min||0,mv:3,armor:3,style:p.style,bond:p.bond,always:!!p.always,friction:p.friction||[],avatar:p.avatar},[6,7,5])});
+ sb.allies.forEach(function(n,i){var p=person(n),w=W[p.weapon]||W.pistol;place({id:'A'+i,side:'a',name:p.name,ref:p.name,hp:80,max:80,dmg:Math.round(w.d[0]*(hasZ('train')?1.2:1)),r:w.r,min:w.min||0,mv:3,armor:3,style:p.style,bond:p.bond,always:!!p.always,friction:p.friction||[],avatar:p.avatar},[6,7,5])});
  sb.enemies.forEach(function(k,i){var t=enemyStat(k);place({id:'E'+i,side:'e',name:k,kind:k,hp:Math.round(t.hp*sc),max:Math.round(t.hp*sc),dmg:Math.round(t.d*sc),r:t.r,mv:t.mv,armor:0,cov:!!t.cov,ghost:!!t.ghost},[0,1,2,3])});
  var obj=null;if(sb.goal==='搶了就跑'){for(var y=0;y<2&&!obj;y++)for(var x=0;x<6;x++)if(map[y][x]==='.'&&!units.some(function(u){return u.x===x&&u.y===y})){obj={x:x,y:y};break}}
  B={map:map,units:units,goal:sb.goal,round:1,moved:false,acted:false,mode:null,smoke:[],log:['第 1 回合開始。'],kills:{},used:{},pts:0,obj:obj,got:false,order:'自由攻擊',ammo:false,tut:(S.station.no<=1&&!S.tutDone)?1:0,res:null,pending:null};
@@ -449,9 +474,9 @@ function canHit(a,d){var r=dist(a,d);return r<=a.r&&r>=(a.min&&r<a.min?99:0)&&!(
 function hit(a,d){
  if(d.side==='p'&&Math.random()<0.5){var g=B.units.find(function(u){return u.side==='a'&&standing(u)&&u.style==='護衛'&&dist(u,d)<=1});if(g){blog(g.name+' 擋在你前面！');d=g}}
  var base=a.dmg*rnd(0.85,1.15);
- if(d.ghost&&!(a.side!=='e'&&B.ammo))base*=0.25;
+ if(d.ghost&&!(a.side!=='e'&&(B.ammo||a.sci)))base*=0.25;
  if(d.marked&&a.side!=='e')base*=1.25;
- if(covered(d)){var cf=0.5;if(a.side==='p'&&S.imp.eye>=3)cf=1;else if(a.side==='p'&&S.imp.eye>=2)cf=0.75;base*=cf}
+ if(covered(d)){var cf=0.5;if(a.sci)cf=0.75;if(a.id==='P'&&S.imp.eye>=3)cf=1;else if(a.id==='P'&&S.imp.eye>=2)cf=Math.max(cf,0.75);base*=cf}
  var dm=Math.max(1,Math.round(base-d.armor));d.hp-=dm;
  blog(a.name+' 攻擊 '+d.name+'，造成 '+dm+' 傷害'+(covered(d)?'（掩體）':''));
  if(a.id==='P'&&W[S.weapons[S.active].k].melee&&S.imp.arm>=2&&d.hp>0){var nx=d.x+Math.sign(d.x-a.x),ny=d.y+Math.sign(d.y-a.y);if(tile(nx,ny)!=='#'&&!occ(nx,ny)){d.x=nx;d.y=ny;blog(d.name+' 被推開一格')}}
@@ -518,7 +543,7 @@ function battleHtml(){var P_=pl(),h='';
  var onExit=tile(P_.x,P_.y)==='E';
  if(!standing(P_)){h+='<div class="hint">你倒地了（流血倒數 '+P_.bleed+'）。只能等隊友來救。</div><button class="btn amb wide" data-act="bWait">繼續</button>'}
  else if(B.mode){h+='<div class="btns"><span class="mut">點選黃框的格子投擲。</span><button class="btn" data-act="bCancel">取消</button></div>'}
- else{h+='<div class="btns"><button class="btn" data-act="bSwap" '+(S.weapons.length<2?'disabled':'')+'>換武器（'+W[S.weapons[S.active].k].n+'）</button><button class="btn" data-act="bItems" '+(B.acted?'disabled':'')+'>道具</button><button class="btn" data-act="bOrder">指令</button><button class="btn amb" data-act="bEnd">結束回合</button>'+(onExit?'<button class="btn red" data-act="bExit">從出口撤離</button>':'')+'</div>';
+ else{h+='<div class="btns"><button class="btn" data-act="bSwap" '+(S.weapons.length<2?'disabled':'')+'>換武器（'+wn(S.weapons[S.active])+'）</button><button class="btn" data-act="bItems" '+(B.acted?'disabled':'')+'>道具</button><button class="btn" data-act="bOrder">指令</button><button class="btn amb" data-act="bEnd">結束回合</button>'+(onExit?'<button class="btn red" data-act="bExit">從出口撤離</button>':'')+'</div>';
   h+='<div class="mut" style="margin-top:4px">移動：'+(B.moved?'已用':'可用')+'｜行動：'+(B.acted?'已用':'可用')+'｜生命 '+P_.hp+'/'+P_.max+'</div>'}
  h+='<div class="blog" id="blog">'+B.log.slice(-12).map(function(x){return '<div>'+esc(x)+'</div>'}).join('')+'</div>';
  return h}
@@ -539,7 +564,7 @@ function cellClick(x,y){var P_=pl();if(!standing(P_))return;
 ACT.bEnd=function(){playerDone()};
 ACT.bWait=function(){playerDone()};
 ACT.bCancel=function(){B.mode=null;render()};
-ACT.bSwap=function(){S.active=S.active?0:1;var ps=playerStats(),P_=pl();P_.dmg=ps.dmg;P_.r=ps.r;P_.min=ps.min;P_.melee=ps.melee;blog('你換成 '+W[S.weapons[S.active].k].n);save2();render()};
+ACT.bSwap=function(){S.active=S.active?0:1;var ps=playerStats(),P_=pl();P_.dmg=ps.dmg;P_.r=ps.r;P_.min=ps.min;P_.melee=ps.melee;P_.sci=ps.sci;blog('你換成 '+wn(S.weapons[S.active]));save2();render()};
 ACT.bOrder=function(){var o=['自由攻擊','跟上我','掩護我'];B.order=o[(o.indexOf(B.order)+1)%3];if(B.tut===3)B.tut=4;blog('你喊：「'+B.order+'！」');save2();render()};
 ACT.bItems=function(){var P_=pl(),h='<h3>道具</h3>',any=0;
  if(S.items.spray){any=1;h+='<button class="btn wide" data-act="useSpray">急救噴劑 ×'+S.items.spray+'（自己回復 40；或救起相鄰倒地的人）</button>'}
