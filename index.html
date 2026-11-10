@@ -20,6 +20,18 @@ button{font:inherit;color:inherit;cursor:pointer}
 #tabs button.on{color:var(--amb);border-bottom-color:var(--amb)}
 #tabs button.dot::after{content:"●";color:var(--red);font-size:9px;vertical-align:top;margin-left:2px}
 #view{flex:1;overflow:auto;padding:12px 14px 40px}
+.sv{padding-bottom:4px}.s-st{font-size:12px;color:#8fa3bf;letter-spacing:.04em;margin:2px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.s-p{color:#c4ccd8;margin:0 0 .75em;line-height:1.8}
+.s-d{color:#f4dfa0;margin:0 0 .75em;padding:2px 0 2px 10px;border-left:3px solid #b99a4a;background:rgba(232,197,106,.06);line-height:1.8}
+.s-d b{color:#ffe9b0}
+.s-hr{height:1px;background:var(--line);margin:12px 0}
+.s-opts{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.s-opts .btn{text-align:left;background:#111a24}
+.s-col{margin:8px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg2)}.s-col summary{padding:6px 10px;color:var(--mut);cursor:pointer;font-size:13px}.s-col div{padding:0 10px 8px;font-size:13px;color:#9aa6b6;white-space:pre-wrap}
+.s-busy{color:var(--amb);font-size:13px;margin:6px 0}
+.s-bar{position:sticky;bottom:-40px;margin:12px -14px -40px;padding:8px 14px 12px;background:linear-gradient(180deg,rgba(7,9,13,0),var(--bg) 22%);}
+.s-bar textarea{min-height:56px;max-height:140px;resize:vertical}
+.s-bar .btns{justify-content:flex-end}
 h3{margin:14px 0 8px;font-size:15px;color:var(--amb);font-weight:600}
 h3:first-child{margin-top:2px}
 .card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
@@ -198,7 +210,9 @@ function arm(){if(!S.started){post({t:'arm',off:true});return}post({t:'arm',obj:
 window.addEventListener('message',function(e){var d=e.data;if(!P||e.source!==P||!d||d.lt!==1)return;
  if(d.t==='events'){var r=ingest(d.text);post({t:'ingested',id:d.id,status:r.status,msg:r.msg})}
  else if(d.t==='consumed'){if(S.notes.length){S.notes=[];persist()}}
- else if(d.t==='fillres')toast(d.s)
+ else if(d.t==='fillres'){toast(d.s);if(/找不到/.test(d.s||'')){ST.busy=false;if(TAB==='story')render()}}
+ else if(d.t==='story')storyPush(d)
+ else if(d.t==='busy'){ST.busy=!!d.on;if(TAB==='story'){var v=$('view'),k=v.scrollTop;render();v.scrollTop=k}}
  else if(d.t==='stat'){}
 });
 
@@ -256,8 +270,8 @@ function apply(ev){var t=ev&&ev.type;
  default:throw new Error('未知類型 '+t)}}
 
 // ===== UI 基礎 =====
-var TAB='stat',dots={};
-var TABS0=[['stat','狀態'],['gear','裝備'],['task','任務'],['shop','商店'],['room','房間'],['fight','戰鬥'],['sys','⚙']];
+var TAB='story',dots={},ST={blocks:[],busy:false,id:''},STdraft='';
+var TABS0=[['story','劇情'],['stat','狀態'],['gear','裝備'],['task','任務'],['shop','商店'],['room','房間'],['fight','戰鬥'],['sys','⚙']];
 function TABS_(){return TABS0.filter(function(t){return t[0]!=='room'||S.room.open})}
 function tabDot(k){if(k!==TAB)dots[k]=1}
 function toast(t){var el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(function(){el.classList.remove('on')},2600)}
@@ -270,12 +284,32 @@ function chips(){if(!S.started){$('chips').innerHTML='<span class="chip">尚未�
  c+=S.station.onTrain?'<span class="chip">列車上</span>':'<span class="chip tm">第'+S.station.no+'站｜距發車 '+S.station.hours+'h</span>';
  if(S.dead)c='<span class="chip" style="color:var(--red)">本局結束</span>'+c;
  $('chips').innerHTML=c}
+// ===== 劇情頁 =====
+function storyHtml(){var h='<div class="sv">';
+ if(!ST.blocks.length)h+='<div class="card mut">這裡會顯示聊天裡最新一則 AI 回覆。送出你的行動後，等一下就會出現。<br>（也可以隨時按右上「回聊天」用原本的畫面。）</div>';
+ var btns=[];
+ ST.blocks.forEach(function(b,i){
+  if(b.k==='st')h+='<div class="s-st">'+esc(b.t)+'</div>';
+  else if(b.k==='d')h+='<div class="s-d">'+esc(b.t).replace(/^([^\s：:「」『』]{1,10})([：:])/,'<b>$1</b>$2').replace(/\n/g,'<br>')+'</div>';
+  else if(b.k==='p')h+='<p class="s-p">'+esc(b.t).replace(/\n/g,'<br>')+'</p>';
+  else if(b.k==='hr')h+='<div class="s-hr"></div>';
+  else if(b.k==='col')h+='<details class="s-col"><summary>'+esc(b.h||'詳情')+'</summary><div>'+esc(b.t)+'</div></details>';
+  else if(b.k==='btn')btns.push([i,b])});
+ if(ST.busy)h+='<div class="s-busy">⏳ AI 回覆中…</div>';
+ if(btns.length&&!ST.busy&&!B)h+='<div class="s-opts">'+btns.map(function(x){return '<button class="btn" data-act="storyGo" data-arg="'+x[0]+'">'+esc(x[1].t)+'</button>'}).join('')+'</div>';
+ h+='<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…')+'">'+esc(STdraft)+'</textarea><div class="btns"><button class="btn amb" data-act="storySend"'+(S.dead?' disabled':'')+'>送出</button></div></div></div>';
+ return h}
+function bindStory(){var t=$('s-in');if(t){t.oninput=function(){STdraft=t.value};t.onkeydown=function(e){if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ACT.storySend()}}}}
+function storyPush(d){ST.blocks=d.blocks||[];ST.id=d.id;ST.busy=!!d.busy;if(TAB==='story'){var v=$('view'),keep=v.scrollTop;render();v.scrollTop=keep}else tabDot('story'),render()}
+function storySay(text){text=(text||'').trim();if(!text)return;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
+ ST.busy=true;post({t:'fill',text:text,send:true,keep:true});if(!P){toast('（測試模式）'+text);ST.busy=false}if(TAB==='story')render()}
 function render(){chips();
  $('tabs').innerHTML=S.started?TABS_().map(function(t){return '<button data-tab="'+t[0]+'" class="'+(t[0]===TAB?'on':'')+(dots[t[0]]?' dot':'')+'">'+t[1]+'</button>'}).join(''):'';
  var v=$('view');
  if(!S.started){v.innerHTML=setupHtml();bindSetup();return}
- v.innerHTML=({stat:statHtml,gear:gearHtml,task:taskHtml,shop:shopHtml,room:roomHtml,fight:fightHtml,sys:sysHtml}[TAB]||statHtml)();
+ v.innerHTML=({story:storyHtml,stat:statHtml,gear:gearHtml,task:taskHtml,shop:shopHtml,room:roomHtml,fight:fightHtml,sys:sysHtml}[TAB]||statHtml)();
  if(TAB==='fight')bindFight();
+ if(TAB==='story')bindStory();
 }
 document.addEventListener('click',function(e){var b=e.target.closest('[data-tab]');if(b){setTab(b.dataset.tab);return}
  var a=e.target.closest('[data-act]');if(!a)return;var f=ACT[a.dataset.act];if(f)f(a.dataset.arg,a)});
@@ -372,7 +406,7 @@ var ACT={
  start:function(){var nm=($('su-name').value||'').trim();if(!nm){toast('請填你的名字');return}
   S.name=nm;S.started=true;S.roster=draft.slice();S.party=draft.map(function(d){return d.name});
   if(draft.length)note('同一晚上車的熟人：'+draft.map(function(d){return d.name+'（'+d.sex+'，'+d.age+'歲，'+(d.rel||'認識的人')+'；外貌：'+(d.look||'未填')+'；個性：'+(d.pers||'未填')+'；戰鬥風格：'+d.style+'）'}).join('、')+'。他們跟你一起醒在通鋪，是同期新人。');
-  log('手環啟用。起始積分 50，配發手槍與防彈背心。');persist();render();showTour()},
+  log('手環啟用。起始積分 50，配發手槍與防彈背心。');persist();post({t:'hint',s:''});TAB='story';render();showTour()},
  equip:function(i){S.active=+i;persist();render()},
  buyItem:function(k){if(!pay(ITEM[k].c))return;S.items[k]++;log('購買 '+ITEM[k].n);note('買了'+ITEM[k].n);persist();render();toast('買了 '+ITEM[k].n)},
  buyWeapon:function(arg){var p=arg.split(':'),k=p[0],t=+p[1],d=W[k],c=d.cost[t-1];if(S.pts<c){toast('積分不夠');return}
@@ -599,11 +633,13 @@ function finishCommon(r){var sb=S.battle;S.station.hours=Math.max(0,+(S.station.
 function resultHtml(){var h='<h3>戰鬥結束</h3><div class="card"><div style="white-space:pre-wrap">'+esc(B.res.text)+'</div></div>';
  h+='<label>戰後你想做什麼？（選填，會一起送出）</label><textarea id="after" placeholder="例如：去看看溫栩栩的傷、先搜一下附近"></textarea><button class="btn amb wide" data-act="sendResult">回到劇情</button><button class="btn wide" data-act="copyResult">只複製結果</button>';
  if(S.tutDone&&S.station.no<=1)h+='<div class="mut" style="margin-top:6px">📘 按「回到劇情」後，故事會接著寫下去。</div>';return h}
-ACT.sendResult=function(){var ex=$('after')?$('after').value.trim():'';var t=S.lastResult.text+(ex?'\n\n我接下來：'+ex:'');S.lastResult.sent=true;B=null;persist();post({t:'fill',text:t,send:true});if(!P){navigator.clipboard&&navigator.clipboard.writeText(t);toast('（測試模式）已複製結果')}render()};
+ACT.storyGo=function(i){var b=ST.blocks[+i];if(b)storySay(b.s||b.t)};
+ACT.storySend=function(){var t=$('s-in'),v=t?t.value:STdraft;STdraft='';storySay(v)};
+ACT.sendResult=function(){var ex=$('after')?$('after').value.trim():'';var t=S.lastResult.text+(ex?'\n\n我接下來：'+ex:'');S.lastResult.sent=true;B=null;persist();post({t:'fill',text:t,send:true,keep:true});if(!P){navigator.clipboard&&navigator.clipboard.writeText(t);toast('（測試模式）已複製結果')}TAB='story';ST.busy=true;render()};
 ACT.copyResult=function(){try{navigator.clipboard.writeText(S.lastResult.text);toast('已複製')}catch(e){toast('複製失敗')}};
 
 // 戰鬥中斷後重新整理：恢復未打的戰鬥
-render();post({t:'hello'});arm();if(!S.started||(S.battle&&S.battle.pending))post({t:'want',open:true});
+render();post({t:'hello'});arm();if(!S.started)post({t:'hint',s:'先啟用手環'});if(S.battle&&S.battle.pending)post({t:'want',open:true});
 if(S.started&&!S.tourDone)showTour();
 window.LTP={ingest:ingest,state:function(){return S},ver:VER};
 })();
