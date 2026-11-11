@@ -254,7 +254,7 @@ function tailFor(){var t='\n（以上是手環資料：數值以此為準，不�
  else if(S.station.onTrain)t+='現在在列車上，時空列寫「列車上｜車廂｜'+((S.station.wait||0)>0?trainClock().text+'・距下一站 '+S.station.wait+' 小時':'已到站')+'」，不可以寫第幾站。車上的人在哪裡、在做什麼，照現在的時段寫。'+((S.station.wait||0)>0?'':'列車已經停靠，廣播催促乘客下車，但玩家還沒下車。')+'到站與下車由玩家按手環決定，手環資料的位置變成任務世界之前，不要寫列車到站或玩家下車。';
  else if(S.battle&&S.battle.pending)t+='戰鬥正在手環上進行，等玩家送來戰鬥結果再接寫。';
  else t+='現在在第'+S.station.no+'站，時空列寫「第'+S.station.no+'站｜'+S.station.world+'・地點｜距發車 '+S.station.hours+' 小時」。列車停在下車點不會開走。回收物有沒有拿到以上面的「回收物」欄為準，寫「未取得」時不可以寫玩家拿到它，只能寫到接近、看見、被擋住。回到列車由玩家按手環決定，不要自己寫玩家回車。'+(tgtReady(S.station)||S.station.got?'':'「目標位置」寫「還沒找到」時：正文寫玩家探索、問路、找線索的過程，讓目標一步步靠近；等玩家在劇情裡實際抵達或確認了'+(S.station.where||'回收目標')+'的位置，在回覆最後輸出 ```lasttrain\n{"type":"found"}\n``` 。只要確認位置就好，不要寫玩家開始搶奪或戰鬥。')+'敵人只用上面列的種類；敵人撲上來或玩家要動手時，正文停在開打前，可以用 ```lasttrain 程式碼區塊輸出 battle 事件，不可自己把戰鬥寫完。';
- return t+'買東西與改裝由玩家在手環操作，不可代寫。）'}
+ return t+(S.station.onTrain?'':'任務世界裡手環商店是關閉的：任何人（包括隊友）都不能用手環買東西、叫出補給，只能用身上已經有的道具或現場找到的東西；要補給就得撐到回車。')+'買東西與改裝只能由玩家本人在列車上用手環操作，隊友不會替玩家買，也不可代寫購買。）'}
 function compact(){
  var wt=S.station.wait||0;var o={'站':S.endless?'—（已留下，不再計站）':S.station.no,'位置':S.station.onTrain?'列車上':'任務世界：'+S.station.world,'等級':S.lv,'生命':S.hp+'/'+maxHp(),'積分':S.pts};
  if(S.station.onTrain&&S.station.no<25){o['距下一站']=wt>0?wt+'小時':'已到站，等待下車';o['列車時間']=trainClock().text}
