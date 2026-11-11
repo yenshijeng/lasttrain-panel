@@ -29,9 +29,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .s-opts .btn{text-align:left;background:#111a24}
 .s-col{margin:8px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg2)}.s-col summary{padding:6px 10px;color:var(--mut);cursor:pointer;font-size:13px}.s-col div{padding:0 10px 8px;font-size:13px;color:#9aa6b6;white-space:pre-wrap}
 .s-busy{color:var(--amb);font-size:13px;margin:6px 0}
-.s-bar{position:sticky;bottom:-40px;margin:12px -14px -40px;padding:8px 14px 12px;background:linear-gradient(180deg,rgba(7,9,13,0),var(--bg) 22%);}
-.s-bar textarea{min-height:56px;max-height:140px;resize:vertical}
-.s-bar .btns{justify-content:flex-end}
+#sbar:empty{display:none}#sbar{padding:8px 14px 10px;border-top:1px solid var(--line);background:var(--bg2)}.s-bar{display:flex;gap:8px;align-items:flex-end}.s-bar textarea{flex:1}.s-bar .btn{min-height:56px;min-width:64px}
+.s-ev{font-size:13px;color:var(--teal);border:1px solid #2a4a52;background:rgba(95,200,196,.07);border-radius:8px;padding:5px 10px;margin:6px 0}
+.s-res{white-space:pre-wrap;font-size:13px;color:#9aa6b6}
+#app{max-width:860px}
+.s-bar textarea{min-height:56px;max-height:140px;resize:none}
 h3{margin:14px 0 8px;font-size:15px;color:var(--amb);font-weight:600}
 h3:first-child{margin-top:2px}
 .card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
@@ -101,6 +103,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
  <div id="top"><b>⌚ 手環</b><div class="chips" id="chips"></div></div>
  <nav id="tabs"></nav>
  <main id="view"></main>
+ <div id="sbar"></div>
 </div>
 <div id="toast"></div>
 <div id="modal"><div class="box" id="mbox"></div></div>
@@ -206,9 +209,12 @@ function compact(){
  if(S.dead)o['狀態']='玩家已死亡，本局結束';
  return o}
 function stName(s){return{ok:'正常',injured:'重傷',resting:'休養中',dead:'死亡'}[s]||s}
-function arm(){if(!S.started){post({t:'arm',off:true});return}post({t:'arm',obj:compact(),tail:TAIL})}
+var FORM=null;
+function formFill(t){if(S.started||!t)return;var m=String(t).match(/你的名字[：:]\s*([^\n]+)/);if(!m)return;var nm=m[1].trim().slice(0,12);if(!nm||FORM===nm)return;FORM=nm;S.name=nm;var el=$('su-name');if(el&&!el.value)el.value=nm;toast('已帶入開局表單的名字：'+nm)}
+function arm(){if(!S.started){post({t:'arm',off:true});post({t:'pre',obj:compact(),tail:TAIL});return}post({t:'arm',obj:compact(),tail:TAIL})}
 window.addEventListener('message',function(e){var d=e.data;if(!P||e.source!==P||!d||d.lt!==1)return;
- if(d.t==='events'){var r=ingest(d.text);post({t:'ingested',id:d.id,status:r.status,msg:r.msg})}
+ if(d.t==='events'){var r=ingest(d.text);if(r.status!=='nosave'&&r.msg){String(r.msg).split(/[；;]/).forEach(function(x){x=x.trim();if(x&&ST.evs.indexOf(x)<0)ST.evs.push(x)});if(ST.evs.length>6)ST.evs=ST.evs.slice(-6);if(TAB==='story')render()}post({t:'ingested',id:d.id,status:r.status,msg:r.msg})}
+ else if(d.t==='form'){formFill(d.text)}
  else if(d.t==='consumed'){if(S.notes.length){S.notes=[];persist()}}
  else if(d.t==='fillres'){toast(d.s);if(/找不到/.test(d.s||'')){ST.busy=false;if(TAB==='story')render()}}
  else if(d.t==='story')storyPush(d)
@@ -270,7 +276,7 @@ function apply(ev){var t=ev&&ev.type;
  default:throw new Error('未知類型 '+t)}}
 
 // ===== UI 基礎 =====
-var TAB='story',dots={},ST={blocks:[],busy:false,id:''},STdraft='';
+var TAB='story',dots={},ST={blocks:[],busy:false,id:'',evs:[],res:''},STdraft='';
 var TABS0=[['story','劇情'],['stat','狀態'],['gear','裝備'],['task','任務'],['shop','商店'],['room','房間'],['fight','戰鬥'],['sys','⚙']];
 function TABS_(){return TABS0.filter(function(t){return t[0]!=='room'||S.room.open})}
 function tabDot(k){if(k!==TAB)dots[k]=1}
@@ -295,17 +301,23 @@ function storyHtml(){var h='<div class="sv">';
   else if(b.k==='hr')h+='<div class="s-hr"></div>';
   else if(b.k==='col')h+='<details class="s-col"><summary>'+esc(b.h||'詳情')+'</summary><div>'+esc(b.t)+'</div></details>';
   else if(b.k==='btn')btns.push([i,b])});
+ ST.evs.forEach(function(x){h+='<div class="s-ev">⌚ '+esc(x)+'</div>'});
+ var fight=!!(S.battle&&S.battle.pending);
+ if(ST.res)h+='<details class="s-col" open><summary>⚔ 戰鬥結果（已送出）</summary><div class="s-res">'+esc(ST.res)+'</div></details>';
+ if(fight)h+='<button class="btn amb wide" data-tab="fight" style="min-height:52px;font-size:16px">⚔ 進入戰鬥</button>';
  if(ST.busy)h+='<div class="s-busy">⏳ AI 回覆中…</div>';
- if(btns.length&&!ST.busy&&!B)h+='<div class="s-opts">'+btns.map(function(x){return '<button class="btn" data-act="storyGo" data-arg="'+x[0]+'">'+esc(x[1].t)+'</button>'}).join('')+'</div>';
- h+='<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…')+'">'+esc(STdraft)+'</textarea><div class="btns"><button class="btn amb" data-act="storySend"'+(S.dead?' disabled':'')+'>送出</button></div></div></div>';
- return h}
+ if(btns.length&&!ST.busy&&!B&&!fight)h+='<div class="s-opts">'+btns.map(function(x){return '<button class="btn" data-act="storyGo" data-arg="'+x[0]+'">'+esc(x[1].t)+'</button>'}).join('')+'</div>';
+ h+='</div>';return h}
+function sbarHtml(){var fight=!!(S.battle&&S.battle.pending);if(fight)return '<div class="mut">戰鬥中：打完後結果會自動送回劇情。</div>';
+ return '<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…（Ctrl+Enter 送出）')+'">'+esc(STdraft)+'</textarea><button class="btn amb" data-act="storySend"'+((S.dead||ST.busy)?' disabled':'')+'>送出</button></div>'}
 function bindStory(){var t=$('s-in');if(t){t.oninput=function(){STdraft=t.value};t.onkeydown=function(e){if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ACT.storySend()}}}}
 function storyPush(d){ST.blocks=d.blocks||[];ST.id=d.id;ST.busy=!!d.busy;if(TAB==='story'){var v=$('view'),keep=v.scrollTop;render();v.scrollTop=keep}else tabDot('story'),render()}
-function storySay(text){text=(text||'').trim();if(!text)return;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
+function storySay(text){text=(text||'').trim();if(!text)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}ST.evs=[];ST.res='';$('sbar')._h=null;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
  ST.busy=true;post({t:'fill',text:text,send:true,keep:true});if(!P){toast('（測試模式）'+text);ST.busy=false}if(TAB==='story')render()}
 function render(){chips();
  $('tabs').innerHTML=S.started?TABS_().map(function(t){return '<button data-tab="'+t[0]+'" class="'+(t[0]===TAB?'on':'')+(dots[t[0]]?' dot':'')+'">'+t[1]+'</button>'}).join(''):'';
  var v=$('view');
+ var sb_=$('sbar'),sh=(S.started&&TAB==='story')?sbarHtml():'';if(sb_._h!==sh){sb_._h=sh;sb_.innerHTML=sh}
  if(!S.started){v.innerHTML=setupHtml();bindSetup();return}
  v.innerHTML=({story:storyHtml,stat:statHtml,gear:gearHtml,task:taskHtml,shop:shopHtml,room:roomHtml,fight:fightHtml,sys:sysHtml}[TAB]||statHtml)();
  if(TAB==='fight')bindFight();
@@ -456,7 +468,7 @@ function startBattle(ev){
  var allies=partyList().filter(function(p){return p.state==='ok'});
  if(Array.isArray(ev.allies)&&ev.allies.length)allies=allies.filter(function(p){return ev.allies.indexOf(p.name)>=0});
  S.battle={ter:ter,goal:goal,enemies:enemies,allies:allies.map(function(p){return p.name}),scale:ev.scale==='small'?'small':'full',where:String(ev.where||'').slice(0,40),pending:true};
- B=null;TAB='fight';post({t:'want',open:true});
+ B=null;if(TAB==='story'&&P)tabDot('fight');else TAB='fight';post({t:'want',open:true});
 }
 function fightHtml(){
  if(B&&B.res)return resultHtml();
@@ -629,7 +641,9 @@ function finishCommon(r){var sb=S.battle;S.station.hours=Math.max(0,+(S.station.
  var txt='【戰鬥結果】第'+S.station.no+'站｜'+sb.ter+(sb.where?'（'+sb.where+'）':'')+'｜目標：'+sb.goal+'｜結果：'+r.outcome+'｜'+r.rounds+'回合\n擊倒：'+k+'\n你的生命：'+S.hp+'/'+maxHp()+(r.playerLoss>0?'（受傷 '+r.playerLoss+'）':'')+'\n隊友：'+(r.allyFate.join('、')||'無')+'\n消耗：'+used+'\n打怪積分：+'+r.pts+'\n經過時間：1小時（距發車 '+S.station.hours+' 小時）';
  if(S.dead)txt+='\n※玩家已死亡，本局結束。請寫出結局。';
  S.lastResult={text:txt,sent:false};sb.pending=false;log('戰鬥：'+r.outcome+'（擊倒 '+k+'）');
- if(B)B.res={text:txt};else B={res:{text:txt}};persist();render()}
+ if(B)B.res={text:txt};else B={res:{text:txt}};persist();
+ if(P){S.lastResult.sent=true;B=null;persist();ST.evs=[];ST.res=txt;ST.busy=true;TAB='story';post({t:'fill',text:txt,send:true,keep:true});render();$('view').scrollTop=$('view').scrollHeight;toast('戰鬥結果已送出');return}
+ render()}
 function resultHtml(){var h='<h3>戰鬥結束</h3><div class="card"><div style="white-space:pre-wrap">'+esc(B.res.text)+'</div></div>';
  h+='<label>戰後你想做什麼？（選填，會一起送出）</label><textarea id="after" placeholder="例如：去看看溫栩栩的傷、先搜一下附近"></textarea><button class="btn amb wide" data-act="sendResult">回到劇情</button><button class="btn wide" data-act="copyResult">只複製結果</button>';
  if(S.tutDone&&S.station.no<=1)h+='<div class="mut" style="margin-top:6px">📘 按「回到劇情」後，故事會接著寫下去。</div>';return h}
