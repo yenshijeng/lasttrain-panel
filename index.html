@@ -114,7 +114,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
 'use strict';
 var VER='1.0.0', KEY='lt.save.v1';
 // 圖片網址前綴：圖片上傳後填入（結尾要有 /）。留空時顯示名字首字。
-var IMG_BASE='';
+var IMG_BASE='img/av/';function avUrl(n){return IMG_BASE+String(n||'').replace(/\.png$/,'.webp')}
 var P=(window.parent&&window.parent!==window)?window.parent:null;
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
@@ -233,7 +233,7 @@ function note(t){S.notes.push(t);if(S.notes.length>8)S.notes.shift()}
 function slotsUsed(){var n=0;for(var k in S.imp)if(S.imp[k]>0)n++;return n}
 function person(name){return S.roster.find(function(r){return r.name===name})}
 function partyList(){return S.party.map(person).filter(Boolean)}
-function avatarHtml(p,cls){var src=p&&p.avatar&&IMG_BASE?IMG_BASE+p.avatar:'';var ch=esc((p&&p.name||'?').slice(0,1));return '<div class="'+(cls||'av')+'">'+(src?'<img src="'+esc(src)+'" alt="" onerror="this.replaceWith(document.createTextNode(\''+ch+'\'))">':ch)+'</div>'}
+function avatarHtml(p,cls){var src=p&&p.avatar&&IMG_BASE?avUrl(p.avatar):'';var ch=esc((p&&p.name||'?').slice(0,1));return '<div class="'+(cls||'av')+'">'+(src?'<img src="'+esc(src)+'" alt="" onerror="this.replaceWith(document.createTextNode(\''+ch+'\'))">':ch)+'</div>'}
 
 // ===== 與載入器溝通 =====
 function post(m){if(P)try{P.postMessage(Object.assign({lt:1},m),'*')}catch(e){}}
@@ -399,7 +399,7 @@ function setupHtml(){
 function bindSetup(){var n=$('su-name');if(n)n.oninput=function(){S.name=n.value.trim()}}
 function draftForm(){var used=draft.map(function(d){return d.avatar});var sel=poolPick('女',used);
  var h='<div data-lock><h3>同一晚上車的人</h3><label>名字</label><input id="df-name" maxlength="12"><label>性別</label><select id="df-sex"><option>女</option><option>男</option><option>其他</option></select><label>年齡（必須成年）</label><input id="df-age" type="number" min="18" max="80" value="25"><label>外貌一句</label><input id="df-look" maxlength="40" placeholder="例如：捲髮、戴眼鏡、總是穿連帽衫"><label>個性一句</label><input id="df-pers" maxlength="40" placeholder="例如：嘴硬心軟、很會照顧人"><label>跟你的關係</label><input id="df-rel" maxlength="30" placeholder="例如：前同事、大學同學、常在車站碰到的人"><label>戰鬥風格</label><select id="df-style">'+STYLES.map(function(s){return '<option>'+s+'</option>'}).join('')+'</select><div class="mut">狙擊＝遠處開槍；突擊＝衝上去打；護衛＝貼身保護你；支援＝治療救人；偵查＝標記敵人弱點</div><label>頭像</label><div class="avpick">';
- POOL.forEach(function(x,i){h+='<div class="av'+(x===sel?' sel':'')+'" data-av="'+x+'" data-sex="'+POOL_SEX[i]+'" title="'+POOL_LB[i]+'">'+(IMG_BASE?'<img src="'+IMG_BASE+x+'" alt="" onerror="this.remove()">':'')+'<span style="font-size:11px">'+(IMG_BASE?'':POOL_LB[i])+'</span></div>'});
+ POOL.forEach(function(x,i){h+='<div class="av'+(x===sel?' sel':'')+'" data-av="'+x+'" data-sex="'+POOL_SEX[i]+'" title="'+POOL_LB[i]+'">'+(IMG_BASE?'<img src="'+avUrl(x)+'" alt="" onerror="this.remove()">':'')+'<span style="font-size:11px">'+(IMG_BASE?'':POOL_LB[i])+'</span></div>'});
  h+='</div><div class="mut" style="margin-top:6px">⚠ 自訂的人和其他乘客一樣，倒地沒被救回就會死。</div><div class="btns"><button class="btn amb" data-act="saveDraft">加入</button><button class="btn" data-act="close">取消</button></div></div>';
  modal(h);var box=$('mbox'),avs=box.querySelectorAll('[data-av]');
  function sync(){var sx=$('df-sex').value,cur=box.querySelector('.av.sel');avs.forEach(function(el){var bad=used.indexOf(el.dataset.av)>=0||((sx==='男'||sx==='女')&&el.dataset.sex!==sx);el.classList.toggle('off',bad);if(bad)el.classList.remove('sel')});
@@ -656,7 +656,7 @@ function battleHtml(){var P_=pl(),h='';
  h+='<div class="grid" id="grid">';
  for(var yy=0;yy<8;yy++)for(var xx=0;xx<6;xx++){var t=tile(xx,yy),k=xx+','+yy,cls='cell'+(t==='#'?' wall':t==='C'?' cov':t==='E'?' exit':'')+(B.obj&&!B.got&&B.obj.x===xx&&B.obj.y===yy?' obj':'')+(inSmoke(xx,yy)?' smoke':'')+(reachSet[k]?' reach':'')+(tgtSet[k]?' tgt':'')+(aimSet[k]?' aim':'')+(B.fx&&B.fx.x===xx&&B.fx.y===yy&&!occ(xx,yy)?' trail':'');
   var u=occ(xx,yy),inner='';
-  if(u){var p=u.side==='a'?person(u.ref):(u.side==='p'?{name:S.name}:null);var src=u.side==='a'&&p&&p.avatar&&IMG_BASE?IMG_BASE+p.avatar:'';
+  if(u){var p=u.side==='a'?person(u.ref):(u.side==='p'?{name:S.name}:null);var src=u.side==='a'&&p&&p.avatar&&IMG_BASE?avUrl(p.avatar):'';
    inner='<div class="u '+u.side+(u.down?' down':'')+(u.marked?' mk':'')+(B.fx&&B.fx.id===u.id?' act':'')+'"><div class="ui">'+(src?'<img src="'+esc(src)+'" alt="">':esc((u.side==='p'?'我':u.name).slice(0,1)))+'</div><span class="hpn">'+(u.ko?'重傷':u.down?'倒地'+u.bleed:u.hp)+'</span></div>'}
   h+='<div class="'+cls+'" data-x="'+xx+'" data-y="'+yy+'">'+inner+'</div>'}
  h+='</div>';
