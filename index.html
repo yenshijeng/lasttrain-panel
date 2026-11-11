@@ -30,6 +30,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .s-col{margin:8px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg2)}.s-col summary{padding:6px 10px;color:var(--mut);cursor:pointer;font-size:13px}.s-col div{padding:0 10px 8px;font-size:13px;color:#9aa6b6;white-space:pre-wrap}
 .s-busy{color:var(--amb);font-size:13px;margin:6px 0}
 #sbar:empty{display:none}#sbar{padding:8px 14px 10px;border-top:1px solid var(--line);background:var(--bg2)}.s-bar{display:flex;gap:8px;align-items:flex-end}.s-bar textarea{flex:1}.s-bar .btn{min-height:56px;min-width:64px}
+.s-pic{margin:0 0 12px;position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);cursor:zoom-in;max-height:240px}.s-pic img{display:block;width:100%;height:240px;object-fit:cover;object-position:50% 30%}.s-pic.full{max-height:none;cursor:zoom-out}.s-pic.full img{height:auto}.s-pic figcaption{position:absolute;left:0;right:0;bottom:0;padding:14px 10px 6px;font-size:12px;color:#e8d9a8;background:linear-gradient(180deg,rgba(7,9,13,0),rgba(7,9,13,.85))}
 .s-ev{font-size:13px;color:var(--teal);border:1px solid #2a4a52;background:rgba(95,200,196,.07);border-radius:8px;padding:5px 10px;margin:6px 0}
 .s-res{white-space:pre-wrap;font-size:13px;color:#9aa6b6}
 #app{max-width:860px}
@@ -68,11 +69,12 @@ label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
 .bhead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--mut);margin-bottom:6px;flex-wrap:wrap}
 .hint{background:#2a2310;border:1px solid #6b5822;color:#ffe3a0;border-radius:8px;padding:7px 10px;font-size:14px;margin-bottom:8px}
 .grid{display:grid;grid-template-columns:repeat(6,var(--cell));gap:2px;justify-content:center;margin:0 auto 8px;user-select:none}
-.cell{width:var(--cell);height:var(--cell);background:#141b24;border-radius:4px;position:relative;display:flex;align-items:center;justify-content:center}
-.cell.wall{background:#2a2f37;background-image:repeating-linear-gradient(45deg,#2a2f37 0 6px,#232830 6px 12px)}
-.cell.cov{background:#1b2a24;box-shadow:inset 0 0 0 2px #3d6b55}
+.grid{background-color:#0d1218;background-size:cover;background-position:center;border-radius:8px;width:max-content;max-width:100%;padding:2px}
+.cell{width:var(--cell);height:var(--cell);background:rgba(20,27,36,.34);border-radius:4px;position:relative;display:flex;align-items:center;justify-content:center}
+.cell.wall{background-color:rgba(20,24,30,.92);background-image:repeating-linear-gradient(45deg,#2a2f37 0 6px,#232830 6px 12px)}
+.cell.cov{background:rgba(27,58,44,.72);box-shadow:inset 0 0 0 2px #3d6b55}
 .cell.cov::before{content:"掩";position:absolute;left:3px;top:1px;font-size:10px;color:#6fae8d}
-.cell.exit{background:#1b2333;box-shadow:inset 0 0 0 2px #4e6aa0}.cell.exit::before{content:"出口";position:absolute;left:3px;top:1px;font-size:10px;color:#7f9cd6}
+.cell.exit{background:rgba(27,40,70,.72);box-shadow:inset 0 0 0 2px #4e6aa0}.cell.exit::before{content:"出口";position:absolute;left:3px;top:1px;font-size:10px;color:#7f9cd6}
 .cell.obj::before{content:"★";position:absolute;right:3px;top:1px;font-size:12px;color:var(--amb)}
 .cell.smoke{background-image:radial-gradient(circle,#4a5563 0,#2a3039 70%)}
 .cell.trail{box-shadow:inset 0 0 0 2px rgba(226,112,95,.55)}.cell.trail::after{content:"·";color:#e2705f;font-size:22px}
@@ -179,6 +181,10 @@ var MAPS={
 };
 // ===== 站表（面板主導）=====
 function E_(k,n){return{k:k,n:n}}
+var EN_IMG={"失控乘客":"berserk","變異狼":"wolf","變異生物":"mutant","喪屍":"zombie","殭屍":"jiangshi","恐龍":"raptor","士兵":"soldier","槍手":"gunman","異形":"alien","寄生生物":"parasite","機器人":"robot","改造傭兵":"merc","騎士":"knight","弓兵":"archer","深海生物":"deepsea","水生怪物":"aquatic","巨獸":"behemoth","怨靈":"wraith","外星士兵":"xeno","收藏庫守衛":"warden","乘客":"passenger"},TER_IMG={"走廊":"corridor","室內":"indoor","街道":"street","開闊地":"open","船艙":"cabin","叢林":"jungle","屋頂":"roof"};
+function enImg(name){name=String(name||'');for(var k in EN_IMG)if(name.indexOf(k)>=0)return 'img/en/lt_e_'+EN_IMG[k]+'.webp';return ''}
+var W_IMG={"深夜地鐵站":"lt_platform","古代陵墓":"lt_w_tomb","恐龍島":"lt_w_dino","似曾相識的城市":"lt_city10","收藏庫":"lt_w_vault","終點站":"lt_w_terminus","沉沒中的豪華郵輪":"lt_w_cruise","西部小鎮":"lt_w_west","極地研究站":"lt_w_polar","二戰城市廢墟":"lt_w_ww2","太空站":"lt_w_space","中世紀攻城戰":"lt_w_siege","深海基地":"lt_w_deep","洪水淹沒的城市":"lt_w_flood","巨獸肆虐的都市":"lt_w_kaiju","鬧鬼的莊園":"lt_w_manor"};
+function pic(n,cap){S.pic={n:n,cap:cap||''};S.picNew=true}
 var STN_FIX={
  1:{w:'深夜地鐵站',ter:'走廊',t:['站務室鑰匙卡'],wh:['站務室前'],main:[E_('喪屍',5)],minor:'喪屍',goal:'殲滅',h:24},
  2:{w:'古代陵墓',ter:'走廊',t:['墓主的玉印'],wh:['主墓室'],main:[E_('殭屍',4)],minor:'殭屍',goal:'殲滅',h:24},
@@ -210,14 +216,14 @@ function targetPts(no){var b=no<=9?150:no<=16?280:400;var vet=partyList().some(f
 function doArrive(){var no=(S.station.no||0)+1,d=stationFor(no);
  S.station={no:no,world:d.w,target:d.t[d.v]||'',where:d.wh[d.v]||'',ter:d.ter,main:d.main,minor:d.minor,goal:d.goal,warn:d.warn||'',end:!!d.end,hours:d.h,onTrain:false,got:false};
  S.roster.forEach(function(p){if(p.state==='injured')p.state='resting'});
- log('抵達第'+no+'站：'+d.w);
+ log('抵達第'+no+'站：'+d.w);if(W_IMG[d.w])pic(W_IMG[d.w],'第 '+no+' 站｜'+d.w);
  if(no===1&&S.party.length<3&&S.party.indexOf('溫栩栩')<0){var w_=person('溫栩栩');if(!w_||w_.state!=='dead'){try{apply({type:'ally_join',name:'溫栩栩',sex:'女',style:'偵查',bond:1,look:'短髮、黑眼圈、皺襯衫',pers:'怕死愛抱怨、嘴硬'});note('溫栩栩不敢一個人走，跟著你一起下車（這一站臨時同行）')}catch(e){}}}
  if(d.end)note('列車抵達終點站。這是'+S.name+'的第25站：讓玩家決定回家，或留在列車上。');
  else note('列車抵達第'+no+'站「'+d.w+'」，停靠 '+d.h+' 小時。回收目標：'+S.station.target+'（在'+S.station.where+'）。這個世界的敵人：'+kindsOf(S.station).join('、')+'。'+(d.warn?d.warn+'。':'')+'請描寫到站與下車後看到的景象，不要直接讓玩家找到回收物。');
  return '抵達第'+no+'站：'+d.w}
 function trainClock(){var h=((30-(S.station.wait||0))%24+24)%24,n=h>=6&&h<11?'早上':h>=11&&h<17?'下午':h>=17&&h<22?'晚上':'深夜';var hh=Math.floor(h),mm=(h-hh)>=0.5?'30':'00';return{h:h,name:n,text:n+' '+(hh<10?'0':'')+hh+':'+mm}}
 function kindsOf(st){var o=[];(st.main||[]).forEach(function(e){if(o.indexOf(e.k)<0)o.push(e.k)});if(st.minor&&o.indexOf(st.minor)<0)o.push(st.minor);return o}
-function doBoard(){var st=S.station,msg;if(st.got){var n=targetPts(st.no);S.pts+=n;log('交出回收物「'+st.target+'」：+'+n+' 積分');msg='交出回收物「'+st.target+'」，車掌發了 '+n+' 積分'}else msg='沒有帶回回收物「'+st.target+'」，沒有主線積分';
+function doBoard(){var st=S.station,msg;if(st.no===1)pic('lt_dining','餐車');else pic('lt_board','回到列車');if(st.got){var n=targetPts(st.no);S.pts+=n;log('交出回收物「'+st.target+'」：+'+n+' 積分');msg='交出回收物「'+st.target+'」，車掌發了 '+n+' 積分'}else msg='沒有帶回回收物「'+st.target+'」，沒有主線積分';
  var r=apply({type:'board',_p:1});note('回到列車，第'+st.no+'站結束。'+msg+'。生命已回滿。請描寫回車後的場面（車掌結算、餐車、其他人有沒有回來）。');return msg}
 var TER_ALIAS={'月台':'走廊','隧道':'走廊','室外':'開闊地','荒野':'開闊地','城市':'街道','船':'船艙','太空站':'船艙','建築':'室內','工廠':'室內','森林':'叢林'};
 
@@ -321,7 +327,7 @@ function apply(ev){var t=ev&&ev.type;
  case 'ally_leave':{var nm2=String(ev.name||'');S.party=S.party.filter(function(n){return n!==nm2});log(nm2+' 離開隊伍：'+(ev.why||''));return nm2+' 離開隊伍'}
  case 'doorcard':{var c=person(String(ev.name||''));if(!c)throw new Error('名冊沒有 '+ev.name);
   if(ev.give===false){c.fixed=false;S.party=S.party.filter(function(n){return n!==c.name});log('收回 '+c.name+' 的門卡');return '收回 '+c.name+' 的門卡'}
-  if(!S.room.open)throw new Error('還沒有房間，不能發門卡');
+  if(!S.room.open)throw new Error('還沒有房間，不能發門卡');pic('lt_doorcard','門卡');
   var fixedN=S.roster.filter(function(r){return r.fixed}).length;if(!c.fixed&&fixedN>=3)throw new Error('門卡只有三張');
   c.fixed=true;if(S.party.indexOf(c.name)<0&&S.party.length<3)S.party.push(c.name);log('把門卡交給 '+c.name);return c.name+' 收下門卡'}
  case 'battle':{if(S.dead)throw new Error('本局已結束');startBattle(ev);return '戰鬥開始'}
@@ -344,6 +350,7 @@ function chips(){if(!S.started){$('chips').innerHTML='<span class="chip">尚未�
  $('chips').innerHTML=c}
 // ===== 劇情頁 =====
 function storyHtml(){var h='<div class="sv">';
+ if(S.pic&&S.pic.n)h+='<figure class="s-pic" data-act="picZoom"><img src="img/'+esc(S.pic.n)+'.webp" alt="" onerror="this.parentNode.remove()"><figcaption>'+esc(S.pic.cap||'')+'</figcaption></figure>';
  if(!ST.blocks.length)h+='<div class="card mut">這裡會顯示聊天裡最新一則 AI 回覆。送出你的行動後，等一下就會出現。<br>（也可以隨時按右上「回聊天」用原本的畫面。）</div>';
  var btns=[];
  ST.blocks.forEach(function(b,i){
@@ -372,8 +379,8 @@ function sbarHtml(){var fight=!!(S.battle&&S.battle.pending);if(fight)return '<d
  return (a?'<div class="btns" style="margin:0 0 8px">'+a+'</div>':'')+(lock?'':'<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…（Shift+Enter 送出）')+'">'+esc(STdraft)+'</textarea><button class="btn amb" data-act="storySend"'+((S.dead||ST.busy)?' disabled':'')+'>送出</button></div>')}
 function bindStory(){var t=$('s-in');if(t){t.oninput=function(){STdraft=t.value};t.onkeydown=function(e){if(e.key==='Enter'&&(e.ctrlKey||e.metaKey||e.shiftKey)&&!e.isComposing){e.preventDefault();ACT.storySend()}}}}
 function storyPush(d){ST.blocks=(d.blocks||[]).map(function(b){if(b.k!=='btn')return b;var t=String(b.t||'').split('\n')[0].replace(/[<>]/g,'').trim().slice(0,40),s2=String(b.s||'').trim();if(!s2||s2.length>120||/[<>]|hc-|title=|bg=/.test(s2))s2=t;return{k:'btn',t:t,s:s2}}).filter(function(b){return b.k!=='btn'||b.t});ST.id=d.id;ST.busy=!!d.busy;if(TAB==='story'){var v=$('view'),keep=v.scrollTop;render();v.scrollTop=keep}else tabDot('story'),render()}
-function storySay(text,free){text=(text||'').trim();if(!text)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}if(!free&&S.started&&!S.dead&&S.station.onTrain&&(S.station.wait||0)>0){S.station.wait=Math.max(0,+(S.station.wait-0.5).toFixed(1));if(S.station.wait===0)note('廣播響起：列車到站了，全體乘客必須下車');persist()}
- if(!free&&S.started&&!S.dead&&!S.station.onTrain&&!S.station.end){if(S.station.hours<=0){toast('列車正在關門，只能回車');return}S.station.hours=Math.max(0,+(S.station.hours-0.5).toFixed(1));if(S.station.hours===1)note('發車前一小時的汽笛響了，整個世界都聽得到');persist()}ST.evs=[];ST.res='';ST.go=null;$('sbar')._h=null;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
+function storySay(text,free){text=(text||'').trim();if(!text)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}if(S.picNew)S.picNew=false;else S.pic=null;if(!free&&S.started&&!S.dead&&S.station.onTrain&&(S.station.wait||0)>0){S.station.wait=Math.max(0,+(S.station.wait-0.5).toFixed(1));if(S.station.wait===0)note('廣播響起：列車到站了，全體乘客必須下車');persist()}
+ if(!free&&S.started&&!S.dead&&!S.station.onTrain&&!S.station.end){if(S.station.hours<=0){toast('列車正在關門，只能回車');return}S.station.hours=Math.max(0,+(S.station.hours-0.5).toFixed(1));if(S.station.hours===1){note('發車前一小時的汽笛響了，整個世界都聽得到');S.pic=null;pic('lt_whistle','發車前一小時')}persist()}ST.evs=[];ST.res='';ST.go=null;$('sbar')._h=null;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
  ST.busy=true;post({t:'fill',text:text,send:true,keep:true});if(!P){toast('（測試模式）'+text);ST.busy=false}if(TAB==='story')render()}
 function render(){chips();
  $('tabs').innerHTML=S.started?TABS_().map(function(t){return '<button data-tab="'+t[0]+'" class="'+(t[0]===TAB?'on':'')+(dots[t[0]]?' dot':'')+'">'+t[1]+'</button>'}).join(''):'';
@@ -479,7 +486,7 @@ var ACT={
  start:function(){var nm=($('su-name').value||'').trim();if(!nm){toast('請填你的名字');return}
   S.name=nm;S.started=true;S.roster=draft.slice();S.party=draft.map(function(d){return d.name});
   if(draft.length)note('同一晚上車的熟人：'+draft.map(function(d){return d.name+'（'+d.sex+'，'+d.age+'歲，'+(d.rel||'認識的人')+'；外貌：'+(d.look||'未填')+'；個性：'+(d.pers||'未填')+'；戰鬥風格：'+d.style+'）'}).join('、')+'。他們跟你一起醒在通鋪，是同期新人。');
-  log('手環啟用。起始積分 50，配發手槍與防彈背心。');persist();post({t:'hint',s:''});TAB='story';render();showTour()},
+  log('手環啟用。起始積分 50，配發手槍與防彈背心。');pic('lt_band','手環');persist();post({t:'hint',s:''});TAB='story';render();showTour()},
  equip:function(i){S.active=+i;persist();render()},
  buyItem:function(k){if(!pay(ITEM[k].c))return;S.items[k]++;log('購買 '+ITEM[k].n);note('買了'+ITEM[k].n);persist();render();toast('買了 '+ITEM[k].n)},
  buyWeapon:function(arg){var p=arg.split(':'),k=p[0],t=+p[1],d=W[k],c=d.cost[t-1];if(S.pts<c){toast('積分不夠');return}
@@ -490,7 +497,7 @@ var ACT={
   function fin(){log('購買 '+d.tn[t-1]);note('買了'+d.tn[t-1]);persist();render();toast('買了 '+d.tn[t-1])}},
  swapW:function(arg){var a=arg.split('|'),i=+a[0],p=a[1].split(':'),k=p[0],t=+p[1],d=W[k];if(!pay(d.cost[t-1]))return;var old=wn(S.weapons[i]);S.weapons[i]={k:k,t:t};log('丟掉 '+old+'，購買 '+d.tn[t-1]);note('丟掉'+old+'，買了'+d.tn[t-1]);closeModal();persist();render()},
  buyArmor:function(k){if(!pay(AR[k].cost))return;S.armor=k;log('購買 '+AR[k].n);note('換上'+AR[k].n);persist();render()},
- buyImp:function(k){var nt=S.imp[k]+1;if(!S.imp[k]&&slotsUsed()>=S.lv){toast('義體部位已滿，先升級');return}if(!pay(IMP_COST[nt]))return;S.imp[k]=nt;log('改裝艙：安裝 '+IMP[k].n+'（'+IMP_T[nt]+'）');note('剛進改裝艙完成手術：'+IMP[k].n+'義體（'+IMP_T[nt]+'）');persist();render();toast('改裝完成：'+IMP[k].n+'（'+IMP_T[nt]+'）')},
+ buyImp:function(k){var nt=S.imp[k]+1;if(!S.imp[k]&&slotsUsed()>=S.lv){toast('義體部位已滿，先升級');return}if(!pay(IMP_COST[nt]))return;S.imp[k]=nt;pic('lt_surgery','改裝艙');log('改裝艙：安裝 '+IMP[k].n+'（'+IMP_T[nt]+'）');note('剛進改裝艙完成手術：'+IMP[k].n+'義體（'+IMP_T[nt]+'）');persist();render();toast('改裝完成：'+IMP[k].n+'（'+IMP_T[nt]+'）')},
  levelUp:function(){var c=LV_COST[S.lv+1];if(!pay(c))return;S.lv++;S.hp=maxHp();log('升到 Lv.'+S.lv);note('升到 Lv.'+S.lv);persist();render();toast('升到 Lv.'+S.lv)},
  openRoom:function(){if(!pay(ROOM_OPEN))return;S.room.open=true;log('開設了自己的房間');note('開設了自己的房間（門後的摺疊空間），從此不用睡通鋪，也可以發門卡給別人');persist();render();toast('房間開好了')},
  buyZone:function(k){if(!pay(ZONES[k].c))return;S.room.zones.push(k);log('房間擴建：'+ZONES[k].n);note('房間擴建了'+ZONES[k].n+'（'+ZONES[k].fx+'）');persist();render();toast('擴建完成：'+ZONES[k].n)},
@@ -653,11 +660,11 @@ function battleHtml(){var P_=pl(),h='';
  if(standing(P_)&&!B.mode&&!B.moved)reach(P_).forEach(function(p){reachSet[p.x+','+p.y]=1});
  if(standing(P_)&&!B.mode&&!B.acted){enemies().forEach(function(e){if(canHit(P_,e))tgtSet[e.x+','+e.y]=1});friends().forEach(function(f){if(f.down&&!f.dead&&f!==P_&&dist(f,P_)<=1)aimSet[f.x+','+f.y]=1})}
  if(B.mode==='grenade'||B.mode==='smoke'){var rr=B.mode==='grenade'?4:3;for(var y=0;y<8;y++)for(var x=0;x<6;x++)if(tile(x,y)!=='#'&&Math.max(Math.abs(x-P_.x),Math.abs(y-P_.y))<=rr)aimSet[x+','+y]=1}
- h+='<div class="grid" id="grid">';
+ h+='<div class="grid" id="grid"'+(TER_IMG[S.battle.ter]?' style="background-image:url(img/map/lt_map_'+TER_IMG[S.battle.ter]+'.webp)"':'')+'>';
  for(var yy=0;yy<8;yy++)for(var xx=0;xx<6;xx++){var t=tile(xx,yy),k=xx+','+yy,cls='cell'+(t==='#'?' wall':t==='C'?' cov':t==='E'?' exit':'')+(B.obj&&!B.got&&B.obj.x===xx&&B.obj.y===yy?' obj':'')+(inSmoke(xx,yy)?' smoke':'')+(reachSet[k]?' reach':'')+(tgtSet[k]?' tgt':'')+(aimSet[k]?' aim':'')+(B.fx&&B.fx.x===xx&&B.fx.y===yy&&!occ(xx,yy)?' trail':'');
   var u=occ(xx,yy),inner='';
-  if(u){var p=u.side==='a'?person(u.ref):(u.side==='p'?{name:S.name}:null);var src=u.side==='a'&&p&&p.avatar&&IMG_BASE?avUrl(p.avatar):'';
-   inner='<div class="u '+u.side+(u.down?' down':'')+(u.marked?' mk':'')+(B.fx&&B.fx.id===u.id?' act':'')+'"><div class="ui">'+(src?'<img src="'+esc(src)+'" alt="">':esc((u.side==='p'?'我':u.name).slice(0,1)))+'</div><span class="hpn">'+(u.ko?'重傷':u.down?'倒地'+u.bleed:u.hp)+'</span></div>'}
+  if(u){var p=u.side==='a'?person(u.ref):(u.side==='p'?{name:S.name}:null);var src=u.side==='a'&&p&&p.avatar&&IMG_BASE?avUrl(p.avatar):(u.side==='e'?enImg(u.kind||u.name):'');var ch1=esc((u.side==='p'?'我':u.name).slice(0,1));
+   inner='<div class="u '+u.side+(u.down?' down':'')+(u.marked?' mk':'')+(B.fx&&B.fx.id===u.id?' act':'')+'"><div class="ui">'+(src?'<img src="'+esc(src)+'" alt="" onerror="this.replaceWith(document.createTextNode(\''+ch1+'\'))">':ch1)+'</div><span class="hpn">'+(u.ko?'重傷':u.down?'倒地'+u.bleed:u.hp)+'</span></div>'}
   h+='<div class="'+cls+'" data-x="'+xx+'" data-y="'+yy+'">'+inner+'</div>'}
  h+='</div>';
  var onExit=tile(P_.x,P_.y)==='E';
@@ -738,6 +745,7 @@ ACT.stay=function(){modal('<h3>留在這個世界</h3><div class="mut">列車會
 ACT.stay2=function(){closeModal();S.missed=true;note('玩家選擇不回車。列車發車，他被永遠留在這個世界。請寫出結局');persist();storySay('我沒有回去。我看著列車關上門。',true);S.dead=true;persist();render()};
 ACT.closeModal=function(){closeModal()};
 ACT.fix=function(k){var m={arrive:'（手環沒有收到到站資料。請不要推進劇情，用一兩句話接上現在的場面，並在回覆最後補上 lasttrain 區塊的 arrive 事件。）',battle:'我準備好了，動手。（請這一回合就輸出 lasttrain 區塊的 battle 事件，正文停在開打前。）',board:'我回到列車上。（請在回覆最後輸出 lasttrain 區塊：先 points 結算，再 board。）'}[k];if(m)storySay(m)};
+ACT.picZoom=function(){var f=document.querySelector('.s-pic');if(f)f.classList.toggle('full')};
 ACT.storyNotes=function(){storySay('我操作完手環了。')};
 ACT.storyGo=function(i){var b=ST.blocks[+i];if(b)storySay(b.s||b.t)};
 ACT.storySend=function(){var t=$('s-in'),v=t?t.value:STdraft;STdraft='';storySay(v)};
