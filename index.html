@@ -75,6 +75,8 @@ label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
 .cell.exit{background:#1b2333;box-shadow:inset 0 0 0 2px #4e6aa0}.cell.exit::before{content:"出口";position:absolute;left:3px;top:1px;font-size:10px;color:#7f9cd6}
 .cell.obj::before{content:"★";position:absolute;right:3px;top:1px;font-size:12px;color:var(--amb)}
 .cell.smoke{background-image:radial-gradient(circle,#4a5563 0,#2a3039 70%)}
+.cell.trail{box-shadow:inset 0 0 0 2px rgba(226,112,95,.55)}.cell.trail::after{content:"·";color:#e2705f;font-size:22px}
+.u.act{animation:uact .42s ease-out}.u.act .ui{box-shadow:0 0 0 2px #fff}@keyframes uact{0%{transform:scale(.6);opacity:.4}100%{transform:scale(1);opacity:1}}
 .cell.reach{box-shadow:inset 0 0 0 2px var(--teal);cursor:pointer}
 .cell.tgt{box-shadow:inset 0 0 0 2px var(--red);cursor:pointer}
 .cell.aim{box-shadow:inset 0 0 0 2px var(--amb);cursor:pointer}
@@ -160,11 +162,11 @@ var POOL_SEX=['女','女','女','女','女','女','女','男','男','男'];
 function poolPick(sex,used){return POOL.find(function(x,i){return used.indexOf(x)<0&&(sex!=='男'&&sex!=='女'||POOL_SEX[i]===sex)})||null}
 var POOL_LB=['社會新鮮人','知性上班族','健身教練','書店店員','辣妹','調酒師','超商店員','宅男','工地師傅','金融菁英'];
 var EN={
- '喪屍':{hp:20,d:8,r:1,mv:3},'變異狼':{hp:22,d:9,r:1,mv:5},'恐龍':{hp:60,d:16,r:1,mv:4},'士兵':{hp:30,d:9,r:5,mv:3,cov:1},
- '槍手':{hp:28,d:10,r:5,mv:3,cov:1},'異形':{hp:35,d:13,r:1,mv:5},'寄生生物':{hp:18,d:7,r:1,mv:4},'機器人':{hp:40,d:10,r:4,mv:2},
+ '喪屍':{hp:20,d:8,r:1,mv:2},'變異狼':{hp:22,d:9,r:1,mv:4},'恐龍':{hp:60,d:16,r:1,mv:4},'士兵':{hp:30,d:9,r:5,mv:3,cov:1},
+ '槍手':{hp:28,d:10,r:5,mv:3,cov:1},'異形':{hp:35,d:13,r:1,mv:4},'寄生生物':{hp:18,d:7,r:1,mv:3},'機器人':{hp:40,d:10,r:4,mv:2},
  '改造傭兵':{hp:40,d:12,r:5,mv:3,cov:1},'騎士':{hp:45,d:14,r:1,mv:3},'弓兵':{hp:20,d:8,r:6,mv:3,cov:1},'深海生物':{hp:30,d:11,r:1,mv:3},
  '變異生物':{hp:25,d:9,r:1,mv:4},'巨獸':{hp:150,d:25,r:1,mv:3},'怨靈':{hp:25,d:10,r:1,mv:4,ghost:1},'殭屍':{hp:28,d:10,r:1,mv:2},
- '外星士兵':{hp:40,d:13,r:5,mv:3,cov:1},'收藏庫守衛':{hp:80,d:15,r:3,mv:2},'乘客':{hp:60,d:14,r:5,mv:3,cov:1},'失控乘客':{hp:24,d:8,r:1,mv:3},'水生怪物':{hp:32,d:11,r:1,mv:3}
+ '外星士兵':{hp:40,d:13,r:5,mv:3,cov:1},'收藏庫守衛':{hp:80,d:15,r:3,mv:2},'乘客':{hp:60,d:14,r:5,mv:3,cov:1},'失控乘客':{hp:24,d:8,r:1,mv:2},'水生怪物':{hp:32,d:11,r:1,mv:3}
 };
 var MAPS={
  '走廊':['#..C.#','#....#','#C..C#','#....#','#.##.#','#....#','#C..C#','#.EE.#'],
@@ -209,6 +211,7 @@ function doArrive(){var no=(S.station.no||0)+1,d=stationFor(no);
  S.station={no:no,world:d.w,target:d.t[d.v]||'',where:d.wh[d.v]||'',ter:d.ter,main:d.main,minor:d.minor,goal:d.goal,warn:d.warn||'',end:!!d.end,hours:d.h,onTrain:false,got:false};
  S.roster.forEach(function(p){if(p.state==='injured')p.state='resting'});
  log('抵達第'+no+'站：'+d.w);
+ if(no===1&&S.party.length<3&&S.party.indexOf('溫栩栩')<0){var w_=person('溫栩栩');if(!w_||w_.state!=='dead'){try{apply({type:'ally_join',name:'溫栩栩',sex:'女',style:'偵查',bond:1,look:'短髮、黑眼圈、皺襯衫',pers:'怕死愛抱怨、嘴硬'});note('溫栩栩不敢一個人走，跟著你一起下車（這一站臨時同行）')}catch(e){}}}
  if(d.end)note('列車抵達終點站。這是'+S.name+'的第25站：讓玩家決定回家，或留在列車上。');
  else note('列車抵達第'+no+'站「'+d.w+'」，停靠 '+d.h+' 小時。回收目標：'+S.station.target+'（在'+S.station.where+'）。這個世界的敵人：'+kindsOf(S.station).join('、')+'。'+(d.warn?d.warn+'。':'')+'請描寫到站與下車後看到的景象，不要直接讓玩家找到回收物。');
  return '抵達第'+no+'站：'+d.w}
@@ -364,9 +367,9 @@ function sbarHtml(){var fight=!!(S.battle&&S.battle.pending);if(fight)return '<d
   else if(st.end)a='<span class="mut">終點站：在下面寫下你的決定。</span>';
   else a='<button class="btn" data-act="skirmish"'+dis+'>⚔ 開打</button>'+(st.got?'<span class="tag ok" style="align-self:center">✓ 已取得回收物</span>':'<button class="btn amb" data-act="goTarget"'+dis+'>🎯 前往回收目標</button>')+'<button class="btn" data-act="board"'+dis+'>🚃 回車</button><span class="mut" style="align-self:center;margin-left:auto">距發車 '+st.hours+'h</span>'}
  var lock=(!st.onTrain&&!st.end&&st.hours<=0);
- return (a?'<div class="btns" style="margin:0 0 8px">'+a+'</div>':'')+(lock?'':'<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…（Ctrl+Enter 送出）')+'">'+esc(STdraft)+'</textarea><button class="btn amb" data-act="storySend"'+((S.dead||ST.busy)?' disabled':'')+'>送出</button></div>')}
-function bindStory(){var t=$('s-in');if(t){t.oninput=function(){STdraft=t.value};t.onkeydown=function(e){if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ACT.storySend()}}}}
-function storyPush(d){ST.blocks=d.blocks||[];ST.id=d.id;ST.busy=!!d.busy;if(TAB==='story'){var v=$('view'),keep=v.scrollTop;render();v.scrollTop=keep}else tabDot('story'),render()}
+ return (a?'<div class="btns" style="margin:0 0 8px">'+a+'</div>':'')+(lock?'':'<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…（Shift+Enter 送出）')+'">'+esc(STdraft)+'</textarea><button class="btn amb" data-act="storySend"'+((S.dead||ST.busy)?' disabled':'')+'>送出</button></div>')}
+function bindStory(){var t=$('s-in');if(t){t.oninput=function(){STdraft=t.value};t.onkeydown=function(e){if(e.key==='Enter'&&(e.ctrlKey||e.metaKey||e.shiftKey)&&!e.isComposing){e.preventDefault();ACT.storySend()}}}}
+function storyPush(d){ST.blocks=(d.blocks||[]).map(function(b){if(b.k!=='btn')return b;var t=String(b.t||'').split('\n')[0].replace(/[<>]/g,'').trim().slice(0,40),s2=String(b.s||'').trim();if(!s2||s2.length>120||/[<>]|hc-|title=|bg=/.test(s2))s2=t;return{k:'btn',t:t,s:s2}}).filter(function(b){return b.k!=='btn'||b.t});ST.id=d.id;ST.busy=!!d.busy;if(TAB==='story'){var v=$('view'),keep=v.scrollTop;render();v.scrollTop=keep}else tabDot('story'),render()}
 function storySay(text,free){text=(text||'').trim();if(!text)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}if(!free&&S.started&&!S.dead&&!S.station.onTrain&&!S.station.end){if(S.station.hours<=0){toast('列車正在關門，只能回車');return}S.station.hours=Math.max(0,+(S.station.hours-0.5).toFixed(1));if(S.station.hours===1)note('發車前一小時的汽笛響了，整個世界都聽得到');persist()}ST.evs=[];ST.res='';ST.go=null;$('sbar')._h=null;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
  ST.busy=true;post({t:'fill',text:text,send:true,keep:true});if(!P){toast('（測試模式）'+text);ST.busy=false}if(TAB==='story')render()}
 function render(){chips();
@@ -502,7 +505,7 @@ var ACT={
  tourNext:function(i){showTour(+i)},
  tourEnd:function(){S.tourDone=true;persist();closeModal()}
 };
-var TOUR=[['⌚ 手環','這是你的終端。上方隨時顯示生命、積分和距離發車的時間。'],['狀態','你的身體、等級、房間，以及跟你同行的隊友。'],['裝備','武器、護具、義體和道具。戰鬥中換武器不算行動。'],['任務','這一站的世界、要帶回的東西，以及發車倒數。'],['商店','回到列車上才能用：補給品、武器、護具、義體、升級、房間。'],['房間','開設房間後才會出現：擴建功能區、管理門卡、邀請別人來。'],['戰鬥','劇情裡開打時會自動跳到這裡。打完按「回到劇情」，故事就會接著寫下去。'],['怎麼玩','平常直接在聊天框打字就好，手環會自動把你的狀態附給 AI。右上角「回聊天」可以收起手環。']];
+var TOUR=[['⌚ 手環','這是你的終端。上方隨時顯示生命、積分和距離發車的時間。'],['劇情','故事在這一頁進行。在下面的輸入框寫你想做的事（Shift+Enter 送出），或直接點 AI 給的選項。'],['下車與回車','輸入框上方的按鈕決定行程：在列車上按「到站・下車」；到站後有「開打」「前往回收目標」「回車」。'],['回收目標','每一站要帶回一件東西。按「前往回收目標」會打這一站的主戰，打贏才算拿到。發車前要按「回車」，沒回來就會被留下。'],['時間','在任務世界每做一件事過半小時，每場戰鬥過一小時。剩一小時會響汽笛。'],['戰鬥','每回合你可以<b>移動一次</b>和<b>行動一次</b>（攻擊、用道具、救人），先後不拘；也可以只做其中一個，再按「結束回合」。站在「掩」的格子上，受到的傷害減半。'],['商店','回到列車上才能用：補給品、武器、護具、義體、升級、房間。'],['隊友與房間','同行的人在「狀態」頁。開設房間後會多一個「房間」分頁，可以擴建、管理門卡。']];
 function showTour(i){i=i||0;var t=TOUR[i];modal('<div class="tour" data-lock><h4>'+t[0]+'（'+(i+1)+'/'+TOUR.length+'）</h4><div>'+t[1]+'</div><div class="btns">'+(i<TOUR.length-1?'<button class="btn amb" data-act="tourNext" data-arg="'+(i+1)+'">下一步</button><button class="btn" data-act="tourEnd">略過</button>':'<button class="btn amb" data-act="tourEnd">開始</button>')+'</div></div>')}
 
 // ===== 戰鬥 =====
@@ -618,20 +621,29 @@ function endCheck(){var P_=pl();
  if(B.goal==='搶了就跑'&&!enemies().length&&B.got)return finish('勝利');
  if(B.goal==='撐住'&&B.round>5)return finish('勝利');
  return false}
-function playerDone(){if(B.res)return;
- B.units.filter(function(u){return u.side==='a'}).forEach(function(u){allyAct(u)});if(endCheck())return;
- enemies().forEach(function(e){enemyAct(e)});
- // 回合結束
- friends().forEach(function(f){if(f.down&&!f.dead&&!f.ko){f.bleed--;if(f.bleed<=0){if(f.side==='p'){f.dead=true;blog('你流血過多……')}else{f.ko=true;blog(f.name+' 失去意識，陷入重傷（要把人帶離戰場）')}}}});
- B.smoke=B.smoke.filter(function(s){return --s.t>0});
- if(endCheck())return;
- B.round++;B.moved=false;B.acted=false;B.mode=null;blog('第 '+B.round+' 回合開始。');
- if(B.tut===2)B.tut=3;
- save2();render()}
+function playerDone(){if(B.res||B.busy)return;B.busy=true;B.mode=null;
+ var q=B.units.filter(function(u){return u.side==='a'&&standing(u)}),phase=0,STEP=(P&&!window.__fast)?420:0;
+ function wrap(){B.busy=false;B.fx=null;
+  var P0=pl();
+  if(S.station.no===1&&S.battle&&S.battle.target&&B.round>=2){var es0=enemies();if(es0.length){es0.sort(function(a,b){return dist(a,P0)-dist(b,P0)});blog('遠處傳來一聲槍響——你沒看到是誰開的槍。');B.sniped=true;hit({name:'看不見的槍手',dmg:22,side:'a',r:99,sci:1},es0[0]);if(endCheck())return}}
+  if(P0.down&&!P0.dead&&S.station.no<=3&&!B.units.some(function(a){return a.side==='a'&&standing(a)})){B.rescued=true;blog('你失去意識前，感覺有人抓住你的衣領往後拖……');finish('撤退');return}
+  friends().forEach(function(f){if(f.down&&!f.dead&&!f.ko){f.bleed--;if(f.bleed<=0){if(f.side==='p'){f.dead=true;blog('你流血過多……')}else{f.ko=true;blog(f.name+' 失去意識，陷入重傷（要把人帶離戰場）')}}}});
+  B.smoke=B.smoke.filter(function(s){return --s.t>0});
+  if(endCheck())return;
+  B.round++;B.moved=false;B.acted=false;B.mode=null;blog('第 '+B.round+' 回合開始。');
+  if(B.tut===2)B.tut=3;
+  save2();render()}
+ function step(){if(!B||B.res){return}
+  if(!q.length){if(phase===0){phase=1;if(endCheck()){B.busy=false;return}q=enemies().slice();if(q.length)blog('— 敵人行動 —')}if(!q.length){wrap();return}}
+  var u=q.shift();if(u.dead||(u.side==='a'&&!standing(u))){step();return}
+  var fx={id:u.id,x:u.x,y:u.y};if(u.side==='a')allyAct(u);else enemyAct(u);B.fx=fx;
+  if(endCheck()){B.busy=false;return}
+  if(STEP){render();setTimeout(step,STEP)}else step()}
+ if(STEP)render();step()}
 function afterPlayerAction(){if(S.imp.nerve&&Math.random()<[0,.15,.3,.45][S.imp.nerve]){B.acted=false;blog('神經義體反應：你多了一次行動！')}
  if(endCheck())return;if(B.moved&&B.acted)playerDone();else{save2();render()}}
 function battleHtml(){var P_=pl(),h='';
- var hint='';if(B.tut&&!S.tutDone){hint=['','點選亮藍框的格子移動。站上「掩」的格子，受到的傷害減半。','點選紅框的敵人攻擊。手槍射程 '+P_.r+' 格。移動和攻擊各一次，做完就換敵人行動。','試試下方「指令」按鈕，切到「掩護我」，隊友會優先打靠近你的敵人。','打贏後按「回到劇情」，把結果告訴 AI。'][Math.min(B.tut,4)]}
+ var hint='';if(B.tut&&!S.tutDone){hint=['','點選亮藍框的格子移動。站上「掩」的格子，受到的傷害減半。','點選紅框的敵人攻擊。手槍射程 '+P_.r+' 格。每回合可以移動一次、行動一次，先後不拘；兩個都用完就換對方行動。','試試下方「指令」按鈕，切到「掩護我」，隊友會優先打靠近你的敵人。','打贏後結果會自動送回劇情。'][Math.min(B.tut,4)]}
  if(hint)h+='<div class="hint">📘 '+hint+'</div>';
  h+='<div class="bhead"><span>第 '+B.round+' 回合｜'+esc(S.battle.ter)+'｜目標：'+goalText(B.goal)+(B.goal==='搶了就跑'?(B.got?'（已拿到）':''):'')+'</span><span class="pill">指令：'+B.order+'</span></div>';
  var reachSet={},tgtSet={},aimSet={};
@@ -639,21 +651,22 @@ function battleHtml(){var P_=pl(),h='';
  if(standing(P_)&&!B.mode&&!B.acted){enemies().forEach(function(e){if(canHit(P_,e))tgtSet[e.x+','+e.y]=1});friends().forEach(function(f){if(f.down&&!f.dead&&f!==P_&&dist(f,P_)<=1)aimSet[f.x+','+f.y]=1})}
  if(B.mode==='grenade'||B.mode==='smoke'){var rr=B.mode==='grenade'?4:3;for(var y=0;y<8;y++)for(var x=0;x<6;x++)if(tile(x,y)!=='#'&&Math.max(Math.abs(x-P_.x),Math.abs(y-P_.y))<=rr)aimSet[x+','+y]=1}
  h+='<div class="grid" id="grid">';
- for(var yy=0;yy<8;yy++)for(var xx=0;xx<6;xx++){var t=tile(xx,yy),k=xx+','+yy,cls='cell'+(t==='#'?' wall':t==='C'?' cov':t==='E'?' exit':'')+(B.obj&&!B.got&&B.obj.x===xx&&B.obj.y===yy?' obj':'')+(inSmoke(xx,yy)?' smoke':'')+(reachSet[k]?' reach':'')+(tgtSet[k]?' tgt':'')+(aimSet[k]?' aim':'');
+ for(var yy=0;yy<8;yy++)for(var xx=0;xx<6;xx++){var t=tile(xx,yy),k=xx+','+yy,cls='cell'+(t==='#'?' wall':t==='C'?' cov':t==='E'?' exit':'')+(B.obj&&!B.got&&B.obj.x===xx&&B.obj.y===yy?' obj':'')+(inSmoke(xx,yy)?' smoke':'')+(reachSet[k]?' reach':'')+(tgtSet[k]?' tgt':'')+(aimSet[k]?' aim':'')+(B.fx&&B.fx.x===xx&&B.fx.y===yy&&!occ(xx,yy)?' trail':'');
   var u=occ(xx,yy),inner='';
   if(u){var p=u.side==='a'?person(u.ref):(u.side==='p'?{name:S.name}:null);var src=u.side==='a'&&p&&p.avatar&&IMG_BASE?IMG_BASE+p.avatar:'';
-   inner='<div class="u '+u.side+(u.down?' down':'')+(u.marked?' mk':'')+'"><div class="ui">'+(src?'<img src="'+esc(src)+'" alt="">':esc((u.side==='p'?'我':u.name).slice(0,1)))+'</div><span class="hpn">'+(u.ko?'重傷':u.down?'倒地'+u.bleed:u.hp)+'</span></div>'}
+   inner='<div class="u '+u.side+(u.down?' down':'')+(u.marked?' mk':'')+(B.fx&&B.fx.id===u.id?' act':'')+'"><div class="ui">'+(src?'<img src="'+esc(src)+'" alt="">':esc((u.side==='p'?'我':u.name).slice(0,1)))+'</div><span class="hpn">'+(u.ko?'重傷':u.down?'倒地'+u.bleed:u.hp)+'</span></div>'}
   h+='<div class="'+cls+'" data-x="'+xx+'" data-y="'+yy+'">'+inner+'</div>'}
  h+='</div>';
  var onExit=tile(P_.x,P_.y)==='E';
- if(!standing(P_)){h+='<div class="hint">你倒地了（流血倒數 '+P_.bleed+'）。只能等隊友來救。</div><button class="btn amb wide" data-act="bWait">繼續</button>'}
+ if(B.busy){h+='<div class="hint">⏳ 隊友與敵人行動中…</div>'}
+ else if(!standing(P_)){h+='<div class="hint">你倒地了（流血倒數 '+P_.bleed+'）。只能等隊友來救。</div><button class="btn amb wide" data-act="bWait">繼續</button>'}
  else if(B.mode){h+='<div class="btns"><span class="mut">點選黃框的格子投擲。</span><button class="btn" data-act="bCancel">取消</button></div>'}
- else{h+='<div class="btns"><button class="btn" data-act="bSwap" '+(S.weapons.length<2?'disabled':'')+'>換武器（'+wn(S.weapons[S.active])+'）</button><button class="btn" data-act="bItems" '+(B.acted?'disabled':'')+'>道具</button><button class="btn" data-act="bOrder">指令</button><button class="btn amb" data-act="bEnd">結束回合</button>'+(onExit?'<button class="btn red" data-act="bExit">從出口撤離</button>':'')+'</div>';
-  h+='<div class="mut" style="margin-top:4px">移動：'+(B.moved?'已用':'可用')+'｜行動：'+(B.acted?'已用':'可用')+'｜生命 '+P_.hp+'/'+P_.max+'</div>'}
+ else{h+='<div class="btns"><button class="btn" data-act="bSwap" '+(S.weapons.length<2?'disabled':'')+'>換武器（'+wn(S.weapons[S.active])+'）</button><button class="btn" data-act="bItems" '+(B.acted?'disabled':'')+'>道具</button><button class="btn" data-act="bOrder">指令</button><button class="btn amb" data-act="bEnd">'+(B.moved&&!B.acted?'不攻擊，結束回合':!B.moved&&B.acted?'不移動，結束回合':'原地待命，結束回合')+'</button>'+(onExit?'<button class="btn red" data-act="bExit">從出口撤離</button>':'')+'</div>';
+  h+='<div class="mut" style="margin-top:4px">移動：'+(B.moved?'已用':'可用')+'｜行動：'+(B.acted?'已用':'可用')+'｜生命 '+P_.hp+'/'+P_.max+'<br>移動和行動都是可選的、先後不拘；兩個都用完會自動換對方行動，只想做一個就按「結束回合」。</div>'}
  h+='<div class="blog" id="blog">'+B.log.slice(-12).map(function(x){return '<div>'+esc(x)+'</div>'}).join('')+'</div>';
  return h}
 function bindFight(){var g=$('grid');if(g)g.onclick=function(e){var c=e.target.closest('.cell');if(!c||!B||B.res)return;cellClick(+c.dataset.x,+c.dataset.y)};var bl=$('blog');if(bl)bl.scrollTop=bl.scrollHeight}
-function cellClick(x,y){var P_=pl();if(!standing(P_))return;
+function cellClick(x,y){var P_=pl();if(B.busy||!standing(P_))return;
  if(B.mode==='grenade'||B.mode==='smoke'){if(Math.max(Math.abs(x-P_.x),Math.abs(y-P_.y))>(B.mode==='grenade'?4:3)||tile(x,y)==='#')return;
   if(B.mode==='grenade'){S.items.grenade--;B.used.grenade=(B.used.grenade||0)+1;blog('你丟出手雷！');B.units.filter(function(u){return !u.dead&&Math.abs(u.x-x)<=1&&Math.abs(u.y-y)<=1}).forEach(function(u){var a={name:'手雷',dmg:25,side:'p',r:9};var s=B.ammo;hit(a,u)})}
   else{S.items.smoke--;B.used.smoke=(B.used.smoke||0)+1;B.smoke.push({x:x,y:y,t:2});blog('煙霧散開，形成掩護')}
@@ -698,7 +711,9 @@ function finishCommon(r){var sb=S.battle;S.station.hours=Math.max(0,+(S.station.
  var k=Object.keys(r.kills).map(function(x){return x+'×'+r.kills[x]}).join('、')||'無';
  var used=Object.keys(r.used).map(function(x){return ITEM[x].n+'×'+r.used[x]}).join('、')||'無';
  var txt='【戰鬥結果】第'+S.station.no+'站｜'+sb.ter+(sb.where?'（'+sb.where+'）':'')+'｜目標：'+sb.goal+'｜結果：'+r.outcome+'｜'+r.rounds+'回合\n擊倒：'+k+'\n你的生命：'+S.hp+'/'+maxHp()+(r.playerLoss>0?'（受傷 '+r.playerLoss+'）':'')+'\n隊友：'+(r.allyFate.join('、')||'無')+'\n消耗：'+used+'\n打怪積分：+'+r.pts+'\n經過時間：1小時（距發車 '+S.station.hours+' 小時）';
- if(sb.target){var won=/^勝利/.test(r.outcome)||/帶著回收物/.test(r.outcome);if(won&&!S.dead){S.station.got=true;txt+='\n回收物：已取得「'+S.station.target+'」。請寫出拿到它的那一幕。';log('取得回收物：'+S.station.target)}else txt+='\n回收物：沒有拿到「'+S.station.target+'」，它還在'+S.station.where+'。'}
+ if(B&&B.sniped)txt+='\n戰鬥中有人從遠處開了幾槍幫你，你沒看到是誰。';
+ if(B&&B.rescued)txt+='\n你倒地後被人拖離戰場（沒看到是誰），醒來時已經在安全的地方，只剩一口氣。';
+ if(sb.target){var won=/^勝利/.test(r.outcome)||/帶著回收物/.test(r.outcome);if(won&&!S.dead&&!(B&&B.rescued)){S.station.got=true;txt+='\n回收物：已取得「'+S.station.target+'」。請寫出拿到它的那一幕。';log('取得回收物：'+S.station.target)}else txt+='\n回收物：沒有拿到「'+S.station.target+'」，它還在'+S.station.where+'。'}
  if(S.dead)txt+='\n※玩家已死亡，本局結束。請寫出結局。';
  S.lastResult={text:txt,sent:false};sb.pending=false;log('戰鬥：'+r.outcome+'（擊倒 '+k+'）');
  if(B)B.res={text:txt};else B={res:{text:txt}};persist();
@@ -710,7 +725,8 @@ function resultHtml(){var h='<h3>戰鬥結束</h3><div class="card"><div style="
 ACT.arrive=function(){if(!S.station.onTrain||S.dead||ST.busy)return;var m=doArrive();persist();toast(m);storySay('列車到站了，我走下列車。',true)};
 ACT.skirmish=function(){var st=S.station;if(st.onTrain||S.dead)return;var n=1+(Math.random()<0.5?1:0)+(st.no>=10?1:0);if(st.hours<=0){toast('列車正在關門，只能回車');return}startBattle({terrain:st.ter,enemies:[E_(st.minor||'喪屍',n)],goal:'殲滅',scale:'small',where:'',_p:1});persist();render()};
 ACT.goTarget=function(){var st=S.station;if(st.onTrain||S.dead||st.got)return;if(st.hours<=0){toast('列車正在關門，只能回車');return}modal('<h3>🎯 前往回收目標</h3><div class="mut">'+esc(st.target)+'在'+esc(st.where)+'。到了那裡就是這一站的主戰：打贏'+(st.goal==='搶了就跑'?'或帶著東西撤離':'')+'才算拿到。'+(st.warn?'<br>⚠ '+esc(st.warn)+'。':'')+'</div><div class="btns"><button class="btn amb" data-act="goTarget2">出發</button><button class="btn" data-act="closeModal">再準備一下</button></div>')};
-ACT.goTarget2=function(){closeModal();var st=S.station;startBattle({terrain:st.ter,enemies:st.main,goal:st.goal,scale:'full',where:st.where,_p:1,_target:1});persist();render()};
+function mainFor(st){var m=(st.main||[]).map(function(e){return{k:e.k,n:e.n}});if(st.no<=3&&m.length){var al=partyList().filter(function(p){return p.state==='ok'}).length;m[0].n=Math.max(1,m[0].n-(al?0:1))}return m}
+ACT.goTarget2=function(){closeModal();var st=S.station;startBattle({terrain:st.ter,enemies:mainFor(st),goal:st.goal,scale:'full',where:st.where,_p:1,_target:1});persist();render()};
 ACT.board=function(){var st=S.station;if(st.onTrain||S.dead)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}modal('<h3>🚃 回到列車</h3><div class="mut">'+(st.got?'你帶著「'+esc(st.target)+'」，回車可拿 '+targetPts(st.no)+' 積分。':'⚠ 你還沒拿到「'+esc(st.target)+'」，現在回車沒有主線積分。')+'<br>回車後這一站就不能再下車。</div><div class="btns"><button class="btn amb" data-act="board2">回車</button><button class="btn" data-act="closeModal">再等等</button></div>')};
 ACT.board2=function(){closeModal();var m=doBoard();persist();toast(m);storySay('我回到列車上。',true)};
 ACT.stay=function(){modal('<h3>留在這個世界</h3><div class="mut">列車會開走，本局結束。確定嗎？</div><div class="btns"><button class="btn red" data-act="stay2">留下</button><button class="btn" data-act="closeModal">取消</button></div>')};
