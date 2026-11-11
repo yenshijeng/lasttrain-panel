@@ -189,8 +189,8 @@ var STN_FIX={
  1:{w:'深夜地鐵站',ter:'走廊',t:['站務室鑰匙卡'],wh:['站務室前'],main:[E_('喪屍',5)],minor:'喪屍',goal:'殲滅',h:24},
  2:{w:'古代陵墓',ter:'走廊',t:['墓主的玉印'],wh:['主墓室'],main:[E_('殭屍',4)],minor:'殭屍',goal:'殲滅',h:24},
  3:{w:'恐龍島',ter:'叢林',t:['孵化場的恆溫蛋'],wh:['孵化場'],main:[E_('恐龍',2)],minor:'變異狼',goal:'搶了就跑',h:24},
- 10:{w:'似曾相識的城市',ter:'街道',t:['寫著你名字的尋人啟事'],wh:['你原本住處的樓下'],main:[E_('乘客',3)],minor:'失控乘客',goal:'搶了就跑',h:12},
- 21:{w:'收藏庫',ter:'室內',t:['一件標著你編號的展品'],wh:['展示廳深處'],main:[E_('收藏庫守衛',3)],minor:'收藏庫守衛',goal:'搶了就跑',h:12},
+ 10:{w:'似曾相識的城市',ter:'街道',t:['樓下那箱寫著你名字的紙箱'],wh:['你原本住處的樓下'],main:[E_('乘客',3)],minor:'失控乘客',goal:'搶了就跑',h:12},
+ 21:{w:'收藏庫',ter:'室內',t:['你自己的檔案'],wh:['展示廳深處的檔案櫃'],main:[E_('收藏庫守衛',3)],minor:'收藏庫守衛',goal:'搶了就跑',h:12},
  25:{w:'終點站',ter:'開闊地',t:[''],wh:[''],main:[],minor:'',goal:'殲滅',h:12,end:true}
 };
 var STN_POOL=[
@@ -223,8 +223,12 @@ function doArrive(){var no=(S.station.no||0)+1,d=stationFor(no);
  return '抵達第'+no+'站：'+d.w}
 function trainClock(){var h=((30-(S.station.wait||0))%24+24)%24,n=h>=6&&h<11?'早上':h>=11&&h<17?'下午':h>=17&&h<22?'晚上':'深夜';var hh=Math.floor(h),mm=(h-hh)>=0.5?'30':'00';return{h:h,name:n,text:n+' '+(hh<10?'0':'')+hh+':'+mm}}
 function kindsOf(st){var o=[];(st.main||[]).forEach(function(e){if(o.indexOf(e.k)<0)o.push(e.k)});if(st.minor&&o.indexOf(st.minor)<0)o.push(st.minor);return o}
+var CLUE={"1":"車掌收下回收物時沒有收進倉庫，而是登記編號、貼上一張小標籤，像在替展品建檔","2":"陵墓的牆上有前人刻的正字記號，數到二十五就停了，旁邊刻著一句：別信說終點是假的那個人","3":"每個老鳥手環上的站數都不一樣；有人隨口說過，每個人都是二十五站","4":"到目前為止交出去的回收物有個共同點：都是那個世界裡，有人到最後還緊緊握著的東西","5":"通鋪的空床總會被補滿：沒回來的人的床，下一批新人上來就有人睡。車掌把這叫做名額","6":"乘客們聊起上車那一晚，每個人都有同一句話：那天晚上，沒有人在等我回家","7":"車掌會記錄誰把門卡給了誰；她看那份紀錄的時間，比看回收物清單還久","8":"霍崢的手環沒有站數，只有一條橫線。章牧野的也是","9":"章牧野被問到終點時只說：把站走完，到了你自己會知道。說完他看了一眼天花板的廣播孔——他不是不想說，是不能說","10":"這座城市是仿的：招牌的字不對，路人的臉在重複。紙箱上的日期是上車那晚之後好幾個月，一直沒有人來領","12":"祁洛璃拆出一段列車紀錄：每個乘客的欄位旁邊都有一欄叫牽掛，大多數人是空的","14":"葉綰秋的搭檔死的那一站，埋伏的位置太準了——有人事先知道互助隊的路線","16":"霍崢的手下說漏了嘴：老大早就下過終點了","17":"列車的主人不是人類。車掌提到她的時候，用的是對主人的敬語","19":"闕寒汐忘了自己為什麼想回家，但她記得一件事：改造得越多，紀錄上的牽掛就越少","21":"檔案上寫著你的採集日期、採集地點，還有一欄：失蹤通報，無。第十站那座城市，是這裡的一個展間","23":"終點只有兩個選擇；選了留下的人，手環就不再計站"};
+var ENDS={home_alone:{t:'一個人回家',pic:'lt_end_home',n:'結局「一個人回家」：擁有者把玩家送回上車那一晚 23:59 的末班車。手機的時間重新開始走。他回到沒有人等的家，但他已經不是同一個人'},home_together:{t:'有人跟你一起回家',pic:'lt_end_home',n:'結局「有人跟你一起回家」：擁有者認定牽掛已經形成，把玩家和收下門卡、關係親密的人一起放行。回到 23:59 的末班車，這一次有人跟他一起下車、一起回家。今晚有人在等他了'},stay_waited:{t:'留下，有人等你',pic:'lt_end_stay',n:'結局「留下，有人等你」：玩家選擇留在列車上。手環的站數變成一條橫線。他的房間裡有人在等他。故事繼續，之後不再計站'},stay_alone:{t:'留下，沒有人等',pic:'lt_end_stay',n:'結局「留下，沒有人等」：玩家選擇留在列車上，但沒有任何人握著他的門卡。手環的站數變成一條橫線。霍崢在走廊盡頭對他笑了一下，像在看以前的自己。故事繼續，之後不再計站'},conductor:{t:'替車掌留下名字',pic:'lt_end_stay',n:'隱藏結局「車掌」：玩家要求帶走車掌，或為她留下。擁有者第一次遲疑——一件展品有了名字。請寫出車掌第一次自己做決定的那一幕，結局由這一幕決定'},truth:{t:'跟擁有者談判',pic:'lt_end_stay',n:'隱藏結局「真相」：玩家拿著所有線索和祁洛璃拆出的紀錄，跟擁有者談判：讓每個乘客都知道終點是什麼、都能自己選。請寫出這場談判，擁有者不是惡意的，她只是從來不懂牽掛'}};
+function endOptions(){var hs=S.roster.filter(function(r){return r.fixed&&r.state!=='dead'}),inti=hs.filter(function(r){return r.bond>=3}),o=[['home',inti.length?'home_together':'home_alone','🏠 回家'],['stay',hs.length?'stay_waited':'stay_alone','🚃 留下']];var c=person('車掌');if(c&&c.bond>=3)o.push(['c','conductor','🕊 帶她一起走']);var q=person('祁洛璃');if((S.clues||[]).length>=15&&q&&q.bond>=2)o.push(['t','truth','📂 跟擁有者談判']);return o}
 function doBoard(){var st=S.station,msg;if(st.no===1)pic('lt_dining','餐車');else pic('lt_board','回到列車');if(st.got){var n=targetPts(st.no);S.pts+=n;log('交出回收物「'+st.target+'」：+'+n+' 積分');msg='交出回收物「'+st.target+'」，車掌發了 '+n+' 積分'}else msg='沒有帶回回收物「'+st.target+'」，沒有主線積分';
- var r=apply({type:'board',_p:1});note('回到列車，第'+st.no+'站結束。'+msg+'。生命已回滿。請描寫回車後的場面（車掌結算、餐車、其他人有沒有回來）。');return msg}
+ var r=apply({type:'board',_p:1});note('回到列車，第'+st.no+'站結束。'+msg+'。生命已回滿。請描寫回車後的場面（車掌結算、餐車、其他人有沒有回來）。');
+ if(!S.clues)S.clues=[];if(st.got&&CLUE[st.no]&&S.clues.indexOf(st.no)<0){S.clues.push(st.no);log('得到線索（第'+st.no+'站）');note('這一站得到的線索：'+CLUE[st.no]+'。請在這一回合的場面裡自然帶出，只寫看到、聽到的事，不要替玩家解釋它的意義')}return msg}
 var TER_ALIAS={'月台':'走廊','隧道':'走廊','室外':'開闊地','荒野':'開闊地','城市':'街道','船':'船艙','太空站':'船艙','建築':'室內','工廠':'室內','森林':'叢林'};
 
 // ===== 存檔 =====
@@ -249,7 +253,7 @@ function tailFor(){var t='\n（以上是手環資料：數值以此為準，不�
  else t+='現在在第'+S.station.no+'站，時空列寫「第'+S.station.no+'站｜'+S.station.world+'・地點｜距發車 '+S.station.hours+' 小時」。列車停在下車點不會開走。回收物有沒有拿到以上面的「回收物」欄為準，寫「未取得」時不可以寫玩家拿到它，只能寫到接近、看見、被擋住。回到列車由玩家按手環決定，不要自己寫玩家回車。敵人只用上面列的種類；敵人撲上來或玩家要動手時，正文停在開打前，可以用 ```lasttrain 程式碼區塊輸出 battle 事件，不可自己把戰鬥寫完。';
  return t+'買東西與改裝由玩家在手環操作，不可代寫。）'}
 function compact(){
- var wt=S.station.wait||0;var o={'站':S.station.no,'位置':S.station.onTrain?'列車上':'任務世界：'+S.station.world,'等級':S.lv,'生命':S.hp+'/'+maxHp(),'積分':S.pts};
+ var wt=S.station.wait||0;var o={'站':S.endless?'—（已留下，不再計站）':S.station.no,'位置':S.station.onTrain?'列車上':'任務世界：'+S.station.world,'等級':S.lv,'生命':S.hp+'/'+maxHp(),'積分':S.pts};
  if(S.station.onTrain&&S.station.no<25){o['距下一站']=wt>0?wt+'小時':'已到站，等待下車';o['列車時間']=trainClock().text}
  if(!S.station.onTrain){o['回收目標']=S.station.target+(S.station.where?'（在'+S.station.where+'）':'');o['回收物']=S.station.got?'已取得':'未取得';o['距發車']=S.station.hours+'小時';var ks=kindsOf(S.station);if(ks.length)o['這個世界的敵人']=ks}
  o['武器']=S.weapons.map(function(w,i){return wn(w)+'（'+TIER[w.t]+'）'+(i===S.active?'★':'')});
@@ -261,7 +265,8 @@ function compact(){
  var others=S.roster.filter(function(r){return S.party.indexOf(r.name)<0&&r.state!=='dead'});if(others.length)o['不在隊上的熟人']=others.map(function(p){return p.name+'（'+stName(p.state)+(p.fixed?'，有門卡':'')+'）'});
  var dead=S.roster.filter(function(r){return r.state==='dead'});if(dead.length)o['已死亡']=dead.map(function(p){return p.name});
  if(S.notes.length)o['新事件']=S.notes.slice();
- if(S.dead)o['狀態']=S.missed?'玩家沒有回到列車，列車已經發車，他被永遠留在這個世界，本局結束':'玩家已死亡，本局結束';
+ if(S.endKey)o['結局']=ENDS[S.endKey].t;
+ if(S.dead&&S.endKey)o['狀態']='玩家已經回家，故事結束';else if(S.dead)o['狀態']=S.missed?'玩家沒有回到列車，列車已經發車，他被永遠留在這個世界，本局結束':'玩家已死亡，本局結束';
  return o}
 function stName(s){return{ok:'正常',injured:'重傷',resting:'休養中',dead:'死亡'}[s]||s}
 var FORM=null;
@@ -372,8 +377,8 @@ function storyHtml(){var h='<div class="sv">';
  h+='</div>';return h}
 function sbarHtml(){var fight=!!(S.battle&&S.battle.pending);if(fight)return '<div class="mut">戰鬥中：打完後結果會自動送回劇情。</div>';
  var st=S.station,a='',dis=(ST.busy||S.dead)?' disabled':'';
- if(!S.dead){if(st.onTrain)a=(st.no>=25?'':((st.wait||0)>0?'<span class="mut" style="align-self:center">🚃 '+trainClock().text+'｜距下一站 '+st.wait+' 小時</span><button class="btn" data-act="skipWait"'+dis+' style="margin-left:auto">⏩ 直接等到到站</button>':'<button class="btn amb" data-act="arrive"'+dis+'>🚉 列車到站了・下車（第 '+((st.no||0)+1)+' 站）</button>'));
-  else if(st.end)a='<span class="mut">終點站：在下面寫下你的決定。</span>';
+ if(!S.dead){if(st.onTrain)a=((st.no>=25&&!S.endless)?'':((st.wait||0)>0?'<span class="mut" style="align-self:center">🚃 '+trainClock().text+'｜距下一站 '+st.wait+' 小時</span><button class="btn" data-act="skipWait"'+dis+' style="margin-left:auto">⏩ 直接等到到站</button>':'<button class="btn amb" data-act="arrive"'+dis+'>🚉 列車到站了・下車（第 '+((st.no||0)+1)+' 站）</button>'));
+  else if(st.end)a='<span class="mut" style="align-self:center">終點站：</span>'+endOptions().map(function(x){return '<button class="btn amb" data-act="ending" data-arg="'+x[1]+'"'+dis+'>'+x[2]+'</button>'}).join('');
   else a='<button class="btn" data-act="skirmish"'+dis+'>⚔ 開打</button>'+(st.got?'<span class="tag ok" style="align-self:center">✓ 已取得回收物</span>':'<button class="btn amb" data-act="goTarget"'+dis+'>🎯 前往回收目標</button>')+'<button class="btn" data-act="board"'+dis+'>🚃 回車</button><span class="mut" style="align-self:center;margin-left:auto">距發車 '+st.hours+'h</span>'}
  var lock=(!st.onTrain&&!st.end&&st.hours<=0);
  return (a?'<div class="btns" style="margin:0 0 8px">'+a+'</div>':'')+(lock?'':'<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…（Shift+Enter 送出）')+'">'+esc(STdraft)+'</textarea><button class="btn amb" data-act="storySend"'+((S.dead||ST.busy)?' disabled':'')+'>送出</button></div>')}
@@ -387,7 +392,7 @@ function render(){chips();
  var v=$('view');
  var sb_=$('sbar'),sh=(S.started&&TAB==='story')?sbarHtml():'';if(sb_._h!==sh){sb_._h=sh;sb_.innerHTML=sh}
  if(!S.started){v.innerHTML=setupHtml();bindSetup();return}
- v.innerHTML=({story:storyHtml,stat:statHtml,gear:gearHtml,task:taskHtml,shop:shopHtml,room:roomHtml,fight:fightHtml,sys:sysHtml}[TAB]||statHtml)();
+ v.innerHTML=({story:storyHtml,stat:statHtml,gear:gearHtml,task:function(){var c=(S.clues||[]);return taskHtml()+'<h3>線索（'+c.length+'）</h3><div class="card">'+(c.length?c.map(function(n){return '<div class="log">第 '+n+' 站｜'+esc(CLUE[n])+'</div>'}).join(''):'<span class="mut">帶著回收物回車，才會得到那一站的線索。</span>')+'</div>'},shop:shopHtml,room:roomHtml,fight:fightHtml,sys:sysHtml}[TAB]||statHtml)();
  if(TAB==='fight')bindFight();
  if(TAB==='story')bindStory();
 }
@@ -524,7 +529,7 @@ function playerStats(){var w=S.weapons[S.active]||S.weapons[0],d=W[w.k];
  var dmg=d.d[w.t-1]+(d.melee?[0,4,8,12][S.imp.arm]:0),r=d.r+[0,1,1,2][S.imp.eye],mv=3+[0,1,2,2][S.imp.leg]+(AR[S.armor].mv||0),armor=AR[S.armor].a+[0,2,4,6][S.imp.torso];
  return{dmg:dmg,r:r,min:d.min||0,mv:Math.max(1,mv),armor:armor,melee:!!d.melee,sci:w.t===3}}
 function scaleFor(no){return 1+0.06*Math.max(0,(no||1)-1)}
-var CORE_LV={'葉綰秋':4,'祁洛璃':3,'闕寒汐':5,'章牧野':4,'霍崢':4};
+var CORE_LV={'葉綰秋':4,'祁洛璃':3,'闕寒汐':5,'章牧野':4,'霍崢':5};
 function allyLv(p){return (p&&(p.lv||CORE_LV[p.name]))||1}
 function effNo(){var no=S.station.no||1,sb=S.battle;if(sb&&sb.allies)sb.allies.forEach(function(n){var l=allyLv(person(n)),v=l>=5?19:l>=4?14:l>=3?10:0;if(v>no)no=v});return no}
 // 敵人名稱容錯：「變異喪屍」「巨大異形」等 → 找出基本種類並加強
@@ -741,6 +746,8 @@ function mainFor(st){var m=(st.main||[]).map(function(e){return{k:e.k,n:e.n}});i
 ACT.goTarget2=function(){closeModal();var st=S.station;startBattle({terrain:st.ter,enemies:mainFor(st),goal:st.goal,scale:'full',where:st.where,_p:1,_target:1});persist();render()};
 ACT.board=function(){var st=S.station;if(st.onTrain||S.dead)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}modal('<h3>🚃 回到列車</h3><div class="mut">'+(st.got?'你帶著「'+esc(st.target)+'」，回車可拿 '+targetPts(st.no)+' 積分。':'⚠ 你還沒拿到「'+esc(st.target)+'」，現在回車沒有主線積分。')+'<br>回車後這一站就不能再下車。</div><div class="btns"><button class="btn amb" data-act="board2">回車</button><button class="btn" data-act="closeModal">再等等</button></div>')};
 ACT.board2=function(){closeModal();var m=doBoard();persist();toast(m);storySay('我回到列車上。',true)};
+ACT.ending=function(k){var e=ENDS[k];if(!e||ST.busy)return;modal('<h3>'+e.t+'</h3><div class="mut">這是終點的決定，選了就不能改。</div><div class="btns"><button class="btn amb" data-act="ending2" data-arg="'+k+'">確定</button><button class="btn" data-act="closeModal">再想想</button></div>')};
+ACT.ending2=function(k){closeModal();var e=ENDS[k],stay=/^stay|conductor|truth/.test(k);S.endKey=k;S.pic=null;pic(e.pic,e.t);note(e.n);if(stay){S.endless=true;S.station.onTrain=true;S.station.end=false;S.station.wait=24}persist();storySay(stay?'我決定留下。':'我要回家。',true);if(!stay){S.dead=true}persist();render()};
 ACT.stay=function(){modal('<h3>留在這個世界</h3><div class="mut">列車會開走，本局結束。確定嗎？</div><div class="btns"><button class="btn red" data-act="stay2">留下</button><button class="btn" data-act="closeModal">取消</button></div>')};
 ACT.stay2=function(){closeModal();S.missed=true;note('玩家選擇不回車。列車發車，他被永遠留在這個世界。請寫出結局');persist();storySay('我沒有回去。我看著列車關上門。',true);S.dead=true;persist();render()};
 ACT.closeModal=function(){closeModal()};
