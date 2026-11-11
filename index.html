@@ -221,7 +221,7 @@ function doBoard(){var st=S.station,msg;if(st.got){var n=targetPts(st.no);S.pts+
 var TER_ALIAS={'月台':'走廊','隧道':'走廊','室外':'開闊地','荒野':'開闊地','城市':'街道','船':'船艙','太空站':'船艙','建築':'室內','工廠':'室內','森林':'叢林'};
 
 // ===== 存檔 =====
-function fresh(){return{v:1,started:false,name:'',lv:1,hp:100,pts:50,weapons:[{k:'pistol',t:1}],active:0,armor:'vest',imp:{eye:0,arm:0,leg:0,torso:0,nerve:0},items:{spray:0,smoke:0,grenade:0,ammo:0},room:{open:false,zones:[]},station:{no:0,world:'',target:'',hours:0,onTrain:true},roster:[],party:[],notes:[],log:[],processed:[],battle:null,tutDone:false,tourDone:false,dead:false,lastResult:null}}
+function fresh(){return{v:1,started:false,name:'',lv:1,hp:100,pts:50,weapons:[{k:'pistol',t:1}],active:0,armor:'vest',imp:{eye:0,arm:0,leg:0,torso:0,nerve:0},items:{spray:0,smoke:0,grenade:0,ammo:0},room:{open:false,zones:[]},station:{no:0,world:'',target:'',hours:0,onTrain:true,wait:6},roster:[],party:[],notes:[],log:[],processed:[],battle:null,tutDone:false,tourDone:false,dead:false,lastResult:null}}
 var S;
 function load(){try{var t=localStorage.getItem(KEY);if(t){var o=JSON.parse(t);if(o&&o.v===1)return o}}catch(e){}return null}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}arm()}
@@ -237,12 +237,13 @@ function avatarHtml(p,cls){var src=p&&p.avatar&&IMG_BASE?IMG_BASE+p.avatar:'';va
 // ===== 與載入器溝通 =====
 function post(m){if(P)try{P.postMessage(Object.assign({lt:1},m),'*')}catch(e){}}
 function tailFor(){var t='\n（以上是手環資料：數值以此為準，不要自行計算。每回合都要有時空列、正文、2到4個行動按鈕、狀態欄。';
- if(S.station.onTrain)t+='現在在列車上，時空列寫「列車上｜車廂｜即將到站」這類寫法，不可以寫第幾站。到站與下車由玩家按手環決定，手環資料的位置變成任務世界之前，不要寫列車到站或玩家下車。';
+ if(S.station.onTrain)t+='現在在列車上，時空列寫「列車上｜車廂｜'+((S.station.wait||0)>0?'距下一站 '+S.station.wait+' 小時':'已到站')+'」，不可以寫第幾站。'+((S.station.wait||0)>0?'':'列車已經停靠，廣播催促乘客下車，但玩家還沒下車。')+'到站與下車由玩家按手環決定，手環資料的位置變成任務世界之前，不要寫列車到站或玩家下車。';
  else if(S.battle&&S.battle.pending)t+='戰鬥正在手環上進行，等玩家送來戰鬥結果再接寫。';
  else t+='現在在第'+S.station.no+'站，時空列寫「第'+S.station.no+'站｜'+S.station.world+'・地點｜距發車 '+S.station.hours+' 小時」。列車停在下車點不會開走。回收物有沒有拿到以上面的「回收物」欄為準，寫「未取得」時不可以寫玩家拿到它，只能寫到接近、看見、被擋住。回到列車由玩家按手環決定，不要自己寫玩家回車。敵人只用上面列的種類；敵人撲上來或玩家要動手時，正文停在開打前，可以用 ```lasttrain 程式碼區塊輸出 battle 事件，不可自己把戰鬥寫完。';
  return t+'買東西與改裝由玩家在手環操作，不可代寫。）'}
 function compact(){
- var o={'站':S.station.no,'位置':S.station.onTrain?'列車上':'任務世界：'+S.station.world,'等級':S.lv,'生命':S.hp+'/'+maxHp(),'積分':S.pts};
+ var wt=S.station.wait||0;var o={'站':S.station.no,'位置':S.station.onTrain?'列車上':'任務世界：'+S.station.world,'等級':S.lv,'生命':S.hp+'/'+maxHp(),'積分':S.pts};
+ if(S.station.onTrain&&S.station.no<25)o['距下一站']=wt>0?wt+'小時':'已到站，等待下車';
  if(!S.station.onTrain){o['回收目標']=S.station.target+(S.station.where?'（在'+S.station.where+'）':'');o['回收物']=S.station.got?'已取得':'未取得';o['距發車']=S.station.hours+'小時';var ks=kindsOf(S.station);if(ks.length)o['這個世界的敵人']=ks}
  o['武器']=S.weapons.map(function(w,i){return wn(w)+'（'+TIER[w.t]+'）'+(i===S.active?'★':'')});
  o['護具']=AR[S.armor].n;
@@ -297,7 +298,7 @@ function apply(ev){var t=ev&&ev.type;
  case 'points':{if(ev.kind!=='sell')return null;var n=parseInt(ev.n,10)||0,cap=200;n=clamp(n,-500,cap);var bonus=(ev.kind==='sell'&&n>0&&hasZ('bench'))?Math.round(n*0.2):0;n+=bonus;if(bonus)ev.why=(ev.why||'')+'（工作台＋'+bonus+'）';S.pts=Math.max(0,S.pts+n);log((n>=0?'獲得':'扣除')+' '+Math.abs(n)+' 積分：'+(ev.why||''));return (n>=0?'+':'')+n+' 積分'}
  case 'open':{var OT={shop:'🛒 打開商店',gear:'🎒 打開裝備',room:'🚪 打開房間',task:'📋 查看任務',stat:'⌚ 查看狀態'},tb=String(ev.tab||'shop');if(!OT[tb]||(tb==='room'&&!S.room.open))tb='shop';ST.go={tab:tb,label:OT[tb]};return ''}
  case 'hp':{var d=clamp(parseInt(ev.n,10)||0,-30,30);S.hp=clamp(S.hp+d,1,maxHp());log('生命 '+(d>=0?'+':'')+d+'：'+(ev.why||''));return '生命 '+(d>=0?'+':'')+d}
- case 'board':{if(S.station.onTrain)return null;if(!ev._p){var m_=doBoard();return '回到列車：'+m_}S.station.onTrain=true;S.station.hours=0;S.hp=maxHp();
+ case 'board':{if(S.station.onTrain)return null;if(!ev._p){var m_=doBoard();return '回到列車：'+m_}S.station.onTrain=true;S.station.wait=6;S.station.hours=0;S.hp=maxHp();
   S.party=S.party.filter(function(n){var p=person(n);if(!p)return false;if(p.state==='resting')p.state='ok';if(p.state==='injured'){}return p.fixed&&p.state!=='dead'});
   S.roster.forEach(function(p){if(p.state==='resting'&&S.party.indexOf(p.name)<0)p.state='ok'});
   var healed=[];if(hasZ('med'))S.roster.forEach(function(p){if(p.state==='injured'){p.state='ok';healed.push(p.name)}});if(healed.length)note('醫療艙治好了'+healed.join('、')+'的重傷');
@@ -363,14 +364,15 @@ function storyHtml(){var h='<div class="sv">';
  h+='</div>';return h}
 function sbarHtml(){var fight=!!(S.battle&&S.battle.pending);if(fight)return '<div class="mut">戰鬥中：打完後結果會自動送回劇情。</div>';
  var st=S.station,a='',dis=(ST.busy||S.dead)?' disabled':'';
- if(!S.dead){if(st.onTrain)a=(st.no>=25?'':'<button class="btn amb" data-act="arrive"'+dis+'>🚉 到站・下車（第 '+((st.no||0)+1)+' 站）</button>');
+ if(!S.dead){if(st.onTrain)a=(st.no>=25?'':((st.wait||0)>0?'<span class="mut" style="align-self:center">🚃 距下一站 '+st.wait+' 小時</span><button class="btn" data-act="skipWait"'+dis+' style="margin-left:auto">⏩ 直接等到到站</button>':'<button class="btn amb" data-act="arrive"'+dis+'>🚉 列車到站了・下車（第 '+((st.no||0)+1)+' 站）</button>'));
   else if(st.end)a='<span class="mut">終點站：在下面寫下你的決定。</span>';
   else a='<button class="btn" data-act="skirmish"'+dis+'>⚔ 開打</button>'+(st.got?'<span class="tag ok" style="align-self:center">✓ 已取得回收物</span>':'<button class="btn amb" data-act="goTarget"'+dis+'>🎯 前往回收目標</button>')+'<button class="btn" data-act="board"'+dis+'>🚃 回車</button><span class="mut" style="align-self:center;margin-left:auto">距發車 '+st.hours+'h</span>'}
  var lock=(!st.onTrain&&!st.end&&st.hours<=0);
  return (a?'<div class="btns" style="margin:0 0 8px">'+a+'</div>':'')+(lock?'':'<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…（Shift+Enter 送出）')+'">'+esc(STdraft)+'</textarea><button class="btn amb" data-act="storySend"'+((S.dead||ST.busy)?' disabled':'')+'>送出</button></div>')}
 function bindStory(){var t=$('s-in');if(t){t.oninput=function(){STdraft=t.value};t.onkeydown=function(e){if(e.key==='Enter'&&(e.ctrlKey||e.metaKey||e.shiftKey)&&!e.isComposing){e.preventDefault();ACT.storySend()}}}}
 function storyPush(d){ST.blocks=(d.blocks||[]).map(function(b){if(b.k!=='btn')return b;var t=String(b.t||'').split('\n')[0].replace(/[<>]/g,'').trim().slice(0,40),s2=String(b.s||'').trim();if(!s2||s2.length>120||/[<>]|hc-|title=|bg=/.test(s2))s2=t;return{k:'btn',t:t,s:s2}}).filter(function(b){return b.k!=='btn'||b.t});ST.id=d.id;ST.busy=!!d.busy;if(TAB==='story'){var v=$('view'),keep=v.scrollTop;render();v.scrollTop=keep}else tabDot('story'),render()}
-function storySay(text,free){text=(text||'').trim();if(!text)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}if(!free&&S.started&&!S.dead&&!S.station.onTrain&&!S.station.end){if(S.station.hours<=0){toast('列車正在關門，只能回車');return}S.station.hours=Math.max(0,+(S.station.hours-0.5).toFixed(1));if(S.station.hours===1)note('發車前一小時的汽笛響了，整個世界都聽得到');persist()}ST.evs=[];ST.res='';ST.go=null;$('sbar')._h=null;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
+function storySay(text,free){text=(text||'').trim();if(!text)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}if(!free&&S.started&&!S.dead&&S.station.onTrain&&(S.station.wait||0)>0){S.station.wait=Math.max(0,S.station.wait-1);if(S.station.wait===0)note('廣播響起：列車到站了，全體乘客必須下車');persist()}
+ if(!free&&S.started&&!S.dead&&!S.station.onTrain&&!S.station.end){if(S.station.hours<=0){toast('列車正在關門，只能回車');return}S.station.hours=Math.max(0,+(S.station.hours-0.5).toFixed(1));if(S.station.hours===1)note('發車前一小時的汽笛響了，整個世界都聽得到');persist()}ST.evs=[];ST.res='';ST.go=null;$('sbar')._h=null;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
  ST.busy=true;post({t:'fill',text:text,send:true,keep:true});if(!P){toast('（測試模式）'+text);ST.busy=false}if(TAB==='story')render()}
 function render(){chips();
  $('tabs').innerHTML=S.started?TABS_().map(function(t){return '<button data-tab="'+t[0]+'" class="'+(t[0]===TAB?'on':'')+(dots[t[0]]?' dot':'')+'">'+t[1]+'</button>'}).join(''):'';
@@ -428,7 +430,7 @@ function gearHtml(){
  if(!any)h+='<div class="mut">沒有道具。可以到商店買。</div>';h+='</div>';
  return h}
 function taskHtml(){var st=S.station,h='';
- if(st.onTrain)h+='<h3>列車上</h3><div class="card">'+(st.no?'第 '+st.no+' 站已結束。':'還沒抵達第一站。')+'<div class="mut">準備好了就到「劇情」頁按「到站・下車」。下一站的回收目標會在到站時公布。商店與改裝區只在列車上開放。</div></div>';
+ if(st.onTrain)h+='<h3>列車上</h3><div class="card">'+(st.no?'第 '+st.no+' 站已結束。':'還沒抵達第一站。')+'<div class="mut">列車到站後，在「劇情」頁按「下車」；不想等也可以按「直接等到到站」。下一站的回收目標會在到站時公布。商店與改裝區只在列車上開放。</div></div>';
  else h+='<h3>第 '+st.no+' 站</h3><div class="card"><div class="row"><span>世界</span><span>'+esc(st.world)+'</span></div><div class="row"><span>回收目標</span><b>'+esc(st.target||'（尚未公布）')+'</b></div><div class="row"><span>地點</span><span>'+esc(st.where||'')+'</span></div><div class="row"><span>回收物</span><span>'+(st.got?'<b style="color:var(--grn)">已取得</b>':'未取得')+'</span></div><div class="row"><span>距離發車</span><span style="color:var(--teal)">'+st.hours+' 小時</span></div><div class="mut">發車前沒回到列車的人，就會留在這個世界。</div></div>';
  h+='<h3>紀錄</h3><div class="card">'+(S.log.length?S.log.slice(0,25).map(function(x){return '<div class="log">'+esc(x)+'</div>'}).join(''):'<div class="mut">還沒有紀錄。</div>')+'</div>';
  return h}
@@ -505,7 +507,7 @@ var ACT={
  tourNext:function(i){showTour(+i)},
  tourEnd:function(){S.tourDone=true;persist();closeModal()}
 };
-var TOUR=[['⌚ 手環','這是你的終端。上方隨時顯示生命、積分和距離發車的時間。'],['劇情','故事在這一頁進行。在下面的輸入框寫你想做的事（Shift+Enter 送出），或直接點 AI 給的選項。'],['下車與回車','輸入框上方的按鈕決定行程：在列車上按「到站・下車」；到站後有「開打」「前往回收目標」「回車」。'],['回收目標','每一站要帶回一件東西。按「前往回收目標」會打這一站的主戰，打贏才算拿到。發車前要按「回車」，沒回來就會被留下。'],['時間','在任務世界每做一件事過半小時，每場戰鬥過一小時。剩一小時會響汽笛。'],['戰鬥','每回合你可以<b>移動一次</b>和<b>行動一次</b>（攻擊、用道具、救人），先後不拘；也可以只做其中一個，再按「結束回合」。站在「掩」的格子上，受到的傷害減半。'],['商店','回到列車上才能用：補給品、武器、護具、義體、升級、房間。'],['隊友與房間','同行的人在「狀態」頁。開設房間後會多一個「房間」分頁，可以擴建、管理門卡。']];
+var TOUR=[['⌚ 手環','這是你的終端。上方隨時顯示生命、積分和距離發車的時間。'],['劇情','故事在這一頁進行。在下面的輸入框寫你想做的事（Shift+Enter 送出），或直接點 AI 給的選項。'],['下車與回車','輸入框上方的按鈕決定行程：在列車上每做一件事過一小時，到站後按「下車」（不想等可以按「直接等到到站」）；到站後有「開打」「前往回收目標」「回車」。'],['回收目標','每一站要帶回一件東西。按「前往回收目標」會打這一站的主戰，打贏才算拿到。發車前要按「回車」，沒回來就會被留下。'],['時間','在任務世界每做一件事過半小時，每場戰鬥過一小時。剩一小時會響汽笛。'],['戰鬥','每回合你可以<b>移動一次</b>和<b>行動一次</b>（攻擊、用道具、救人），先後不拘；也可以只做其中一個，再按「結束回合」。站在「掩」的格子上，受到的傷害減半。'],['商店','回到列車上才能用：補給品、武器、護具、義體、升級、房間。'],['隊友與房間','同行的人在「狀態」頁。開設房間後會多一個「房間」分頁，可以擴建、管理門卡。']];
 function showTour(i){i=i||0;var t=TOUR[i];modal('<div class="tour" data-lock><h4>'+t[0]+'（'+(i+1)+'/'+TOUR.length+'）</h4><div>'+t[1]+'</div><div class="btns">'+(i<TOUR.length-1?'<button class="btn amb" data-act="tourNext" data-arg="'+(i+1)+'">下一步</button><button class="btn" data-act="tourEnd">略過</button>':'<button class="btn amb" data-act="tourEnd">開始</button>')+'</div></div>')}
 
 // ===== 戰鬥 =====
@@ -722,7 +724,9 @@ function finishCommon(r){var sb=S.battle;S.station.hours=Math.max(0,+(S.station.
 function resultHtml(){var h='<h3>戰鬥結束</h3><div class="card"><div style="white-space:pre-wrap">'+esc(B.res.text)+'</div></div>';
  h+='<label>戰後你想做什麼？（選填，會一起送出）</label><textarea id="after" placeholder="例如：去看看溫栩栩的傷、先搜一下附近"></textarea><button class="btn amb wide" data-act="sendResult">回到劇情</button><button class="btn wide" data-act="copyResult">只複製結果</button>';
  if(S.tutDone&&S.station.no<=1)h+='<div class="mut" style="margin-top:6px">📘 按「回到劇情」後，故事會接著寫下去。</div>';return h}
-ACT.arrive=function(){if(!S.station.onTrain||S.dead||ST.busy)return;var m=doArrive();persist();toast(m);storySay('列車到站了，我走下列車。',true)};
+ACT.skipWait=function(){if(!S.station.onTrain||S.dead||ST.busy)return;modal('<h3>⏩ 直接等到到站</h3><div class="mut">跳過列車上剩下的 '+(S.station.wait||0)+' 小時，直接下車。還沒買的補給、還沒聊的人就來不及了。</div><div class="btns"><button class="btn amb" data-act="skipWait2">到站下車</button><button class="btn" data-act="closeModal">再待一下</button></div>')};
+ACT.skipWait2=function(){closeModal();S.station.wait=0;ACT.arrive()};
+ACT.arrive=function(){if(!S.station.onTrain||S.dead||ST.busy)return;if((S.station.wait||0)>0)return;var m=doArrive();persist();toast(m);storySay('列車到站了，我走下列車。',true)};
 ACT.skirmish=function(){var st=S.station;if(st.onTrain||S.dead)return;var n=1+(Math.random()<0.5?1:0)+(st.no>=10?1:0);if(st.hours<=0){toast('列車正在關門，只能回車');return}startBattle({terrain:st.ter,enemies:[E_(st.minor||'喪屍',n)],goal:'殲滅',scale:'small',where:'',_p:1});persist();render()};
 ACT.goTarget=function(){var st=S.station;if(st.onTrain||S.dead||st.got)return;if(st.hours<=0){toast('列車正在關門，只能回車');return}modal('<h3>🎯 前往回收目標</h3><div class="mut">'+esc(st.target)+'在'+esc(st.where)+'。到了那裡就是這一站的主戰：打贏'+(st.goal==='搶了就跑'?'或帶著東西撤離':'')+'才算拿到。'+(st.warn?'<br>⚠ '+esc(st.warn)+'。':'')+'</div><div class="btns"><button class="btn amb" data-act="goTarget2">出發</button><button class="btn" data-act="closeModal">再準備一下</button></div>')};
 function mainFor(st){var m=(st.main||[]).map(function(e){return{k:e.k,n:e.n}});if(st.no<=3&&m.length){var al=partyList().filter(function(p){return p.state==='ok'}).length;m[0].n=Math.max(1,m[0].n-(al?0:1))}return m}
