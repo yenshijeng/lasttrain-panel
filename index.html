@@ -213,7 +213,7 @@ var FORM=null;
 function formFill(t){if(S.started||!t)return;var m=String(t).match(/你的名字[：:]\s*([^\n]+)/);if(!m)return;var nm=m[1].trim().slice(0,12);if(!nm||FORM===nm)return;FORM=nm;S.name=nm;var el=$('su-name');if(el&&!el.value)el.value=nm;toast('已帶入開局表單的名字：'+nm)}
 function arm(){if(!S.started){post({t:'arm',off:true});post({t:'pre',obj:compact(),tail:TAIL});return}post({t:'arm',obj:compact(),tail:TAIL})}
 window.addEventListener('message',function(e){var d=e.data;if(!P||e.source!==P||!d||d.lt!==1)return;
- if(d.t==='events'){var r=ingest(d.text);if(r.status!=='nosave'&&r.msg){String(r.msg).split(/[；;]/).forEach(function(x){x=x.trim();if(x&&ST.evs.indexOf(x)<0)ST.evs.push(x)});if(ST.evs.length>6)ST.evs=ST.evs.slice(-6);if(TAB==='story')render()}post({t:'ingested',id:d.id,status:r.status,msg:r.msg})}
+ if(d.t==='events'){var r=ingest(d.text);if(r.status!=='nosave'&&ST.go&&TAB==='story')render();if(r.status!=='nosave'&&r.msg){String(r.msg).split(/[；;]/).forEach(function(x){x=x.trim();if(x&&ST.evs.indexOf(x)<0)ST.evs.push(x)});if(ST.evs.length>6)ST.evs=ST.evs.slice(-6);if(TAB==='story')render()}post({t:'ingested',id:d.id,status:r.status,msg:r.msg})}
  else if(d.t==='form'){formFill(d.text)}
  else if(d.t==='consumed'){if(S.notes.length){S.notes=[];persist()}}
  else if(d.t==='fillres'){toast(d.s);if(/找不到/.test(d.s||'')){ST.busy=false;if(TAB==='story')render()}}
@@ -246,6 +246,7 @@ function apply(ev){var t=ev&&ev.type;
   log('抵達第'+no+'站：'+S.station.world);tabDot('task');return '抵達第'+no+'站'}
  case 'time':{S.station.hours=clamp(parseFloat(ev.hours)||0,0,72);return '距發車 '+S.station.hours+' 小時'}
  case 'points':{var n=parseInt(ev.n,10)||0,cap=capFor(S.station.no||1);n=clamp(n,-500,cap);var bonus=(ev.kind==='sell'&&n>0&&hasZ('bench'))?Math.round(n*0.2):0;n+=bonus;if(bonus)ev.why=(ev.why||'')+'（工作台＋'+bonus+'）';S.pts=Math.max(0,S.pts+n);log((n>=0?'獲得':'扣除')+' '+Math.abs(n)+' 積分：'+(ev.why||''));return (n>=0?'+':'')+n+' 積分'}
+ case 'open':{var OT={shop:'🛒 打開商店',gear:'🎒 打開裝備',room:'🚪 打開房間',task:'📋 查看任務',stat:'⌚ 查看狀態'},tb=String(ev.tab||'shop');if(!OT[tb]||(tb==='room'&&!S.room.open))tb='shop';ST.go={tab:tb,label:OT[tb]};return ''}
  case 'hp':{var d=clamp(parseInt(ev.n,10)||0,-30,30);S.hp=clamp(S.hp+d,1,maxHp());log('生命 '+(d>=0?'+':'')+d+'：'+(ev.why||''));return '生命 '+(d>=0?'+':'')+d}
  case 'board':{S.station.onTrain=true;S.station.hours=0;S.hp=maxHp();
   S.party=S.party.filter(function(n){var p=person(n);if(!p)return false;if(p.state==='resting')p.state='ok';if(p.state==='injured'){}return p.fixed&&p.state!=='dead'});
@@ -276,7 +277,7 @@ function apply(ev){var t=ev&&ev.type;
  default:throw new Error('未知類型 '+t)}}
 
 // ===== UI 基礎 =====
-var TAB='story',dots={},ST={blocks:[],busy:false,id:'',evs:[],res:''},STdraft='';
+var TAB='story',dots={},ST={blocks:[],busy:false,id:'',evs:[],res:'',go:null},STdraft='';
 var TABS0=[['story','劇情'],['stat','狀態'],['gear','裝備'],['task','任務'],['shop','商店'],['room','房間'],['fight','戰鬥'],['sys','⚙']];
 function TABS_(){return TABS0.filter(function(t){return t[0]!=='room'||S.room.open})}
 function tabDot(k){if(k!==TAB)dots[k]=1}
@@ -304,6 +305,8 @@ function storyHtml(){var h='<div class="sv">';
  ST.evs.forEach(function(x){h+='<div class="s-ev">⌚ '+esc(x)+'</div>'});
  var fight=!!(S.battle&&S.battle.pending);
  if(ST.res)h+='<details class="s-col" open><summary>⚔ 戰鬥結果（已送出）</summary><div class="s-res">'+esc(ST.res)+'</div></details>';
+ if(ST.go&&!fight&&!ST.busy)h+='<button class="btn amb wide" data-tab="'+ST.go.tab+'" style="min-height:48px;font-size:15px">'+ST.go.label+'</button>';
+ if(S.notes.length&&!fight&&!ST.busy)h+='<div class="card" style="margin-top:8px"><div class="mut">你在手環上做了這些事，AI 還不知道：</div>'+S.notes.map(function(n){return '<div class="log">'+esc(n)+'</div>'}).join('')+'<button class="btn wide" data-act="storyNotes">讓這些發生在劇情裡</button><div class="mut" style="margin-top:4px">或直接在下面寫你的行動，也會一起告訴 AI。</div></div>';
  if(fight)h+='<button class="btn amb wide" data-tab="fight" style="min-height:52px;font-size:16px">⚔ 進入戰鬥</button>';
  if(ST.busy)h+='<div class="s-busy">⏳ AI 回覆中…</div>';
  if(btns.length&&!ST.busy&&!B&&!fight)h+='<div class="s-opts">'+btns.map(function(x){return '<button class="btn" data-act="storyGo" data-arg="'+x[0]+'">'+esc(x[1].t)+'</button>'}).join('')+'</div>';
@@ -312,7 +315,7 @@ function sbarHtml(){var fight=!!(S.battle&&S.battle.pending);if(fight)return '<d
  return '<div class="s-bar"><textarea id="s-in" placeholder="'+(S.dead?'本局已結束':'寫下你想做的事、想說的話…（Ctrl+Enter 送出）')+'">'+esc(STdraft)+'</textarea><button class="btn amb" data-act="storySend"'+((S.dead||ST.busy)?' disabled':'')+'>送出</button></div>'}
 function bindStory(){var t=$('s-in');if(t){t.oninput=function(){STdraft=t.value};t.onkeydown=function(e){if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ACT.storySend()}}}}
 function storyPush(d){ST.blocks=d.blocks||[];ST.id=d.id;ST.busy=!!d.busy;if(TAB==='story'){var v=$('view'),keep=v.scrollTop;render();v.scrollTop=keep}else tabDot('story'),render()}
-function storySay(text){text=(text||'').trim();if(!text)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}ST.evs=[];ST.res='';$('sbar')._h=null;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
+function storySay(text){text=(text||'').trim();if(!text)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}ST.evs=[];ST.res='';ST.go=null;$('sbar')._h=null;if(S.dead){toast('本局已結束');return}if(!S.started){toast('請先啟用手環');return}
  ST.busy=true;post({t:'fill',text:text,send:true,keep:true});if(!P){toast('（測試模式）'+text);ST.busy=false}if(TAB==='story')render()}
 function render(){chips();
  $('tabs').innerHTML=S.started?TABS_().map(function(t){return '<button data-tab="'+t[0]+'" class="'+(t[0]===TAB?'on':'')+(dots[t[0]]?' dot':'')+'">'+t[1]+'</button>'}).join(''):'';
@@ -647,6 +650,7 @@ function finishCommon(r){var sb=S.battle;S.station.hours=Math.max(0,+(S.station.
 function resultHtml(){var h='<h3>戰鬥結束</h3><div class="card"><div style="white-space:pre-wrap">'+esc(B.res.text)+'</div></div>';
  h+='<label>戰後你想做什麼？（選填，會一起送出）</label><textarea id="after" placeholder="例如：去看看溫栩栩的傷、先搜一下附近"></textarea><button class="btn amb wide" data-act="sendResult">回到劇情</button><button class="btn wide" data-act="copyResult">只複製結果</button>';
  if(S.tutDone&&S.station.no<=1)h+='<div class="mut" style="margin-top:6px">📘 按「回到劇情」後，故事會接著寫下去。</div>';return h}
+ACT.storyNotes=function(){storySay('我操作完手環了。')};
 ACT.storyGo=function(i){var b=ST.blocks[+i];if(b)storySay(b.s||b.t)};
 ACT.storySend=function(){var t=$('s-in'),v=t?t.value:STdraft;STdraft='';storySay(v)};
 ACT.sendResult=function(){var ex=$('after')?$('after').value.trim():'';var t=S.lastResult.text+(ex?'\n\n我接下來：'+ex:'');S.lastResult.sent=true;B=null;persist();post({t:'fill',text:t,send:true,keep:true});if(!P){navigator.clipboard&&navigator.clipboard.writeText(t);toast('（測試模式）已複製結果')}TAB='story';ST.busy=true;render()};
