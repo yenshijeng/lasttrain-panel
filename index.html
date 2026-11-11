@@ -202,7 +202,7 @@ function compact(){
  var im={};for(var k in S.imp)if(S.imp[k])im[IMP[k].n]=IMP_T[S.imp[k]];if(Object.keys(im).length)o['義體']=im;
  var it={};for(var k2 in S.items)if(S.items[k2])it[ITEM[k2].n]=S.items[k2];if(Object.keys(it).length)o['道具']=it;
  o['房間']=S.room.open?('有（'+(S.room.zones.filter(function(z){return ZONES[z]}).map(function(z){return ZONES[z].n}).join('、')||'基本單人房')+'）'):'無（住通鋪）';
- o['隊伍']=partyList().map(function(p){return{'名':p.name,'風格':p.style,'好感':BOND[p.bond],'狀態':stName(p.state),'門卡':p.fixed?'有':'無'}});
+ o['隊伍']=partyList().map(function(p){return{'名':p.name,'等級':allyLv(p),'風格':p.style,'好感':BOND[p.bond],'狀態':stName(p.state),'門卡':p.fixed?'有':'無'}});
  var others=S.roster.filter(function(r){return S.party.indexOf(r.name)<0&&r.state!=='dead'});if(others.length)o['不在隊上的熟人']=others.map(function(p){return p.name+'（'+stName(p.state)+(p.fixed?'，有門卡':'')+'）'});
  var dead=S.roster.filter(function(r){return r.state==='dead'});if(dead.length)o['已死亡']=dead.map(function(p){return p.name});
  if(S.notes.length)o['新事件']=S.notes.slice();
@@ -234,7 +234,7 @@ function ingest(text){
  var h=djb(String(text))+':'+String(text).length;if(S.processed.indexOf(h)>=0)return{status:'done',msg:'已處理過'};
  var o=parseLoose(text);if(!o)return{status:'error',msg:'看不懂這段資料'};
  var evs=Array.isArray(o)?o:(o.events||(o.type?[o]:[]));var done=[],bad=[];
- evs.forEach(function(ev){try{var r=apply(ev);if(r)done.push(r)}catch(x){bad.push(String(x.message||x))}});
+ evs.forEach(function(ev){try{var r=apply(ev);if(ev&&(ev.type==='ally_join'||ev.type==='ally')&&ev.lv){var q_=person(String(ev.name||'').trim().slice(0,12));if(q_)q_.lv=clamp(parseInt(ev.lv,10)||1,1,5)}if(r)done.push(r)}catch(x){bad.push(String(x.message||x))}});
  S.processed.push(h);if(S.processed.length>200)S.processed.shift();
  persist();render();
  var msg=done.join('；')+(bad.length?'（略過：'+bad.join('、')+'）':'');if(msg)toast('手環更新：'+msg);
@@ -459,6 +459,9 @@ function playerStats(){var w=S.weapons[S.active]||S.weapons[0],d=W[w.k];
  var dmg=d.d[w.t-1]+(d.melee?[0,4,8,12][S.imp.arm]:0),r=d.r+[0,1,1,2][S.imp.eye],mv=3+[0,1,2,2][S.imp.leg]+(AR[S.armor].mv||0),armor=AR[S.armor].a+[0,2,4,6][S.imp.torso];
  return{dmg:dmg,r:r,min:d.min||0,mv:Math.max(1,mv),armor:armor,melee:!!d.melee,sci:w.t===3}}
 function scaleFor(no){return 1+0.06*Math.max(0,(no||1)-1)}
+var CORE_LV={'葉綰秋':4,'祁洛璃':3,'闕寒汐':5,'章牧野':4,'霍崢':4};
+function allyLv(p){return (p&&(p.lv||CORE_LV[p.name]))||1}
+function effNo(){var no=S.station.no||1,sb=S.battle;if(sb&&sb.allies)sb.allies.forEach(function(n){var l=allyLv(person(n)),v=l>=5?19:l>=4?14:l>=3?10:0;if(v>no)no=v});return no}
 // 敵人名稱容錯：「變異喪屍」「巨大異形」等 → 找出基本種類並加強
 function enemyStat(k){if(EN[k])return EN[k];var base=Object.keys(EN).sort(function(a,b){return b.length-a.length}).find(function(x){return k.indexOf(x)>=0});
  var t=Object.assign({},base?EN[base]:{hp:30,d:10,r:1,mv:3});if(/變異|巨大|首領|精英|頭目|母體|BOSS/i.test(k)){t.hp=Math.round(t.hp*2.5);t.d=Math.round(t.d*1.5)}return t}
@@ -487,19 +490,19 @@ function fightHtml(){
  return h2}
 function goalText(g){return{'殲滅':'清掉所有敵人','搶了就跑':'拿到 ★ 回收物，再撤到出口','撐住':'撐過 5 回合','撤退':'撤到出口'}[g]}
 ACT.fullBattle=function(){initBattle();render()};
-ACT.quick=function(){var sb=S.battle,ps=playerStats(),al=sb.allies.length,sc=scaleFor(S.station.no);
+ACT.quick=function(){var sb=S.battle,ps=playerStats(),al=sb.allies.length,sc=scaleFor(effNo());
  var ehp=0,edmg=0,kills={};sb.enemies.forEach(function(k){var t=enemyStat(k);ehp+=t.hp*sc;edmg+=t.d*sc;kills[k]=(kills[k]||0)+1});
  var power=ps.dmg+al*12,rounds=Math.max(1,Math.ceil(ehp/power));var loss=Math.round(clamp(edmg*rounds*0.25/(1+al*0.5)-ps.armor*rounds,2,S.hp*0.4));
  S.hp=Math.max(1,S.hp-loss);var pts=0;sb.enemies.forEach(function(k){pts+=killVal(k)});S.pts+=pts;
  finishCommon({outcome:'勝利（快速解決）',rounds:rounds,kills:kills,pts:pts,used:{},allyFate:sb.allies.map(function(n){return n+' 正常'}),playerLoss:loss})};
-function killVal(k){var t=enemyStat(k);var hp=t.hp*scaleFor(S.station.no);return hp>=120?100:Math.max(1,Math.round(hp/10))}
-function initBattle(){var sb=S.battle,map=MAPS[sb.ter].slice(),ps=playerStats(),sc=scaleFor(S.station.no);
+function killVal(k){var t=enemyStat(k);var hp=t.hp*scaleFor(effNo());return hp>=120?100:Math.max(1,Math.round(hp/10))}
+function initBattle(){var sb=S.battle,map=MAPS[sb.ter].slice(),ps=playerStats(),sc=scaleFor(effNo());
  var units=[],free=function(x,y){return y>=0&&y<8&&x>=0&&x<6&&map[y][x]!=='#'&&!units.some(function(u){return u.x===x&&u.y===y})};
  function place(u,rows){for(var tries=0;tries<200;tries++){var y=rows[Math.floor(Math.random()*rows.length)],x=Math.floor(Math.random()*6);if(free(x,y)){u.x=x;u.y=y;units.push(u);return}}}
  var pu={id:'P',side:'p',name:S.name,hp:S.hp,max:maxHp(),dmg:ps.dmg,r:ps.r,min:ps.min,mv:ps.mv,armor:ps.armor,melee:ps.melee,sci:ps.sci};
  var ex=-1;for(var c=0;c<6;c++)if(map[7][c]==='E'||map[6][c]==='E'){ex=c;break}
  if(free(2,6))place(pu,[6]);else place(pu,[6,7,5]);
- sb.allies.forEach(function(n,i){var p=person(n),w=W[p.weapon]||W.pistol;place({id:'A'+i,side:'a',name:p.name,ref:p.name,hp:80,max:80,dmg:Math.round(w.d[0]*(hasZ('train')?1.2:1)),r:w.r,min:w.min||0,mv:3,armor:3,style:p.style,bond:p.bond,always:!!p.always,friction:p.friction||[],avatar:p.avatar},[6,7,5])});
+ sb.allies.forEach(function(n,i){var p=person(n),w=W[p.weapon]||W.pistol;place({id:'A'+i,side:'a',name:p.name,ref:p.name,hp:80+20*(allyLv(p)-1),max:80+20*(allyLv(p)-1),dmg:Math.round(w.d[0]*(1+0.25*(allyLv(p)-1))*(hasZ('train')?1.2:1)),r:w.r,min:w.min||0,mv:3,armor:3,style:p.style,bond:p.bond,always:!!p.always,friction:p.friction||[],avatar:p.avatar},[6,7,5])});
  sb.enemies.forEach(function(k,i){var t=enemyStat(k);place({id:'E'+i,side:'e',name:k,kind:k,hp:Math.round(t.hp*sc),max:Math.round(t.hp*sc),dmg:Math.round(t.d*sc),r:t.r,mv:t.mv,armor:0,cov:!!t.cov,ghost:!!t.ghost},[0,1,2,3])});
  var obj=null;if(sb.goal==='搶了就跑'){for(var y=0;y<2&&!obj;y++)for(var x=0;x<6;x++)if(map[y][x]==='.'&&!units.some(function(u){return u.x===x&&u.y===y})){obj={x:x,y:y};break}}
  B={map:map,units:units,goal:sb.goal,round:1,moved:false,acted:false,mode:null,smoke:[],log:['第 1 回合開始。'],kills:{},used:{},pts:0,obj:obj,got:false,order:'自由攻擊',ammo:false,tut:(S.station.no<=1&&!S.tutDone)?1:0,res:null,pending:null};
