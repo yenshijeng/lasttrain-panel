@@ -229,7 +229,7 @@ var CLUE={"1":"車掌收下回收物時沒有收進倉庫，而是登記編號�
 var ENDS={home_alone:{t:'一個人回家',pic:'lt_end_home',n:'結局「一個人回家」：擁有者把玩家送回上車那一晚 23:59 的末班車。手機的時間重新開始走。他回到沒有人等的家，但他已經不是同一個人'},home_together:{t:'有人跟你一起回家',pic:'lt_end_home',n:'結局「有人跟你一起回家」：擁有者認定牽掛已經形成，把玩家和收下門卡、關係親密的人一起放行。回到 23:59 的末班車，這一次有人跟他一起下車、一起回家。今晚有人在等他了'},stay_waited:{t:'留下，有人等你',pic:'lt_end_stay',n:'結局「留下，有人等你」：玩家選擇留在列車上。手環的站數變成一條橫線。他的房間裡有人在等他。故事繼續，之後不再計站'},stay_alone:{t:'留下，沒有人等',pic:'lt_end_stay',n:'結局「留下，沒有人等」：玩家選擇留在列車上，但沒有任何人握著他的門卡。手環的站數變成一條橫線。霍崢在走廊盡頭對他笑了一下，像在看以前的自己。故事繼續，之後不再計站'},become_huo:{t:'留下，成為下一個霍崢',pic:'lt_end_stay',n:'隱藏結局「下一個霍崢」：玩家選擇留在列車上，而且手上沒有任何人的門卡——這一路他丟下過同伴、收回過門卡，沒有人再等他。手環的站數變成一條橫線。新一批新人上車那晚，他站在通鋪邊看著他們，第一次明白當年霍崢看他們的眼神是什麼意思。請寫出這一幕：他可以選擇成為霍崢那樣的人，也可以在新人遞出手環前說一句不同的話，由這一幕決定。故事繼續，之後不再計站'},conductor:{t:'替車掌留下名字',pic:'lt_end_stay',n:'隱藏結局「車掌」：玩家要求帶走車掌，或為她留下。擁有者第一次遲疑——一件展品有了名字。請寫出車掌第一次自己做決定的那一幕，結局由這一幕決定'},truth:{t:'跟擁有者談判',pic:'lt_end_stay',n:'隱藏結局「真相」：玩家拿著所有線索和祁洛璃拆出的紀錄，跟擁有者談判：讓每個乘客都知道終點是什麼、都能自己選。請寫出這場談判，擁有者不是惡意的，她只是從來不懂牽掛'}};
 function endOptions(){var hs=S.roster.filter(function(r){return r.fixed&&r.state!=='dead'}),inti=hs.filter(function(r){return r.bond>=3}),o=[['home',inti.length?'home_together':'home_alone','🏠 回家'],['stay',hs.length?'stay_waited':((S.cold||0)>=2?'become_huo':'stay_alone'),'🚃 留下']];var c=person('車掌');if(c&&c.bond>=3)o.push(['c','conductor','🕊 帶她一起走']);var q=person('祁洛璃');if((S.clues||[]).length>=15&&q&&q.bond>=2)o.push(['t','truth','📂 跟擁有者談判']);return o}
 function doBoard(){var st=S.station,msg;pic('lt_board','回到列車');if(st.got){var n=targetPts(st.no);S.pts+=n;log('交出回收物「'+st.target+'」：+'+n+' 積分');msg='交出回收物「'+st.target+'」，車掌發了 '+n+' 積分'}else msg='沒有帶回回收物「'+st.target+'」，沒有主線積分';
- var r=apply({type:'board',_p:1});note('回到列車，第'+st.no+'站結束。'+msg+'。生命已回滿。請描寫回車後的場面：玩家回到通鋪車廂，車掌在車門邊結算，其他人有沒有回來。不要把場景直接寫到餐車，要不要去餐車、商店或房間由玩家自己決定。');
+ var r=apply({type:'board',_p:1});note('回到列車，第'+st.no+'站結束。'+msg+'。生命已回滿。請描寫回車後的場面：'+(S.room.open?'玩家回到車廂（他已經有自己的房間，不住通鋪了），':'玩家回到通鋪車廂，')+'車掌在車門邊結算，其他人有沒有回來。不要把場景直接寫到餐車，要不要去餐車、商店或房間由玩家自己決定。');
  if(!S.clues)S.clues=[];if(st.got&&CLUE[st.no]&&S.clues.indexOf(st.no)<0){S.clues.push(st.no);log('得到線索（第'+st.no+'站）');note('這一站得到的線索：'+CLUE[st.no]+'。請在這一回合的場面裡自然帶出，只寫看到、聽到的事，不要替玩家解釋它的意義')}return msg}
 var TER_ALIAS={'月台':'走廊','隧道':'走廊','室外':'開闊地','荒野':'開闊地','城市':'街道','船':'船艙','太空站':'船艙','建築':'室內','工廠':'室內','森林':'叢林'};
 
@@ -237,7 +237,19 @@ var TER_ALIAS={'月台':'走廊','隧道':'走廊','室外':'開闊地','荒野'
 function fresh(){return{v:1,started:false,name:'',lv:1,hp:100,pts:50,weapons:[{k:'pistol',t:1}],active:0,armor:'vest',imp:{eye:0,arm:0,leg:0,torso:0,nerve:0},items:{spray:0,smoke:0,grenade:0,ammo:0},room:{open:false,zones:[]},station:{no:0,world:'',target:'',hours:0,onTrain:true,wait:6},roster:[],party:[],notes:[],log:[],processed:[],battle:null,tutDone:false,tourDone:false,dead:false,lastResult:null}}
 var S;
 function load(){try{var t=localStorage.getItem(KEY);if(t){var o=JSON.parse(t);if(o&&o.v===1)return o}}catch(e){}return null}
-function persist(){try{S.bsv=(typeof B!=='undefined'&&B&&B.units&&!B.res)?B:null;localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}arm()}
+function persist(){try{S.bsv=(typeof B!=='undefined'&&B&&B.units&&!B.res)?B:null;var j_=JSON.stringify(S);localStorage.setItem(KEY,j_);if(S.conv&&S.started)cvSave(S.conv,j_)}catch(e){}arm()}
+function cvSave(id,j){try{localStorage.setItem('lt.c.'+id,j);var ix=[];try{ix=JSON.parse(localStorage.getItem('lt.cidx')||'[]')}catch(e){}ix=ix.filter(function(x){return x!==id});ix.push(id);while(ix.length>6){localStorage.removeItem('lt.c.'+ix.shift())}localStorage.setItem('lt.cidx',JSON.stringify(ix))}catch(e){}}
+var CV={asked:'',fb:false};
+function convMsg(d){var id=d.id?String(d.id):'';
+ if(!S.started){if(id&&S.conv!==id){S.conv=id;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}return}
+ if(!id){if(d.u>0){if(!S.everUser){S.everUser=true;persist()}return}if(S.everUser&&!CV.fb){CV.fb=true;convAsk('')}return}
+ if(d.u>0&&!S.everUser){S.everUser=true}
+ if(!S.conv){S.conv=id;persist();return}
+ if(S.conv===id)return;
+ try{cvSave(S.conv,JSON.stringify(S));var o=localStorage.getItem('lt.c.'+id);if(o){var x=JSON.parse(o);if(x&&x.v===1&&x.started){localStorage.setItem(KEY,o);location.reload();return}}}catch(e){}
+ if(CV.asked===id)return;CV.asked=id;convAsk(id)}
+function convAsk(id){CV.nid=id;modal('<div data-lock><h3>⌚ 這是另一個對話</h3><div class="mut">手環裡有'+esc(S.name||'你')+'的進度（第 '+(S.station.no||0)+' 站、積分 '+S.pts+'），但這個對話不是原本那一個。<br><br><b>接續進度</b>：把目前的進度帶到這個對話，AI 會從現在的場景接著寫。適合原本的對話太長、想換新對話繼續玩。<br><b>重新開始</b>：開一局新的。舊進度會保留，切回原本的對話時手環會自動載回。</div><div class="btns"><button class="btn amb" data-act="cvGo">接續進度</button><button class="btn red" data-act="cvNew">重新開始</button></div></div>')}
+
 S=load()||fresh();
 function maxHp(){return 100+20*(S.lv-1)}
 function log(t){S.log.unshift(t);if(S.log.length>60)S.log.length=60}
@@ -249,9 +261,9 @@ function avatarHtml(p,cls){var src=p&&p.avatar&&IMG_BASE?avUrl(p.avatar):'';var 
 
 // ===== 與載入器溝通 =====
 function post(m){if(P)try{P.postMessage(Object.assign({lt:1},m),'*')}catch(e){}}
-function tailFor(){var t='\n（以上是手環資料：數值以此為準，不要自行計算。狀態欄的積分一律照抄手環資料的「積分」（現在是'+S.pts+'），只寫玩家自己的積分，不寫隊友或其他人的積分；積分只會因手環事件改變，正文不可寫成玩家把身上的武器、護具賣掉或回收換積分。每回合都要有時空列、正文、2到4個行動按鈕、狀態欄。';
+function tailFor(){var t='\n（以上是手環資料：數值以此為準，不要自行計算。狀態欄的積分一律照抄手環資料的「積分」（現在是'+S.pts+'），戰鬥結果裡的打怪積分已經由手環加進去了，不要再加一次；只寫玩家自己的積分，不寫隊友或其他人的積分；積分只會因手環事件改變，正文不可寫成玩家把身上的武器、護具賣掉或回收換積分。每回合都要有時空列、正文、2到4個行動按鈕、狀態欄。';
  if(S.battle&&S.battle.pending)t+='戰鬥正在手環上進行，等玩家送來戰鬥結果再接寫。';
- else if(S.station.onTrain)t+='現在在列車上，時空列寫「列車上｜車廂｜'+((S.station.wait||0)>0?trainClock().text+'・距下一站 '+S.station.wait+' 小時':'已到站')+'」，不可以寫第幾站。車上的人在哪裡、在做什麼，照現在的時段寫。'+((S.station.wait||0)>0?'':'列車已經停靠，廣播催促乘客下車，但玩家還沒下車。')+'到站與下車由玩家按手環決定，手環資料的位置變成任務世界之前，不要寫列車到站或玩家下車。';
+ else if(S.station.onTrain)t+='現在在列車上，時空列寫「列車上｜車廂｜'+((S.station.wait||0)>0?trainClock().text+'・距下一站 '+S.station.wait+' 小時':'已到站')+'」，不可以寫第幾站。車上的人在哪裡、在做什麼，照現在的時段寫。'+(S.room.open?'玩家已經有自己的房間（門後的摺疊空間），不住通鋪；他休息、睡覺、獨處都寫在自己的房間，房間樣子以手環資料的「房間」欄為準。':'')+((S.station.wait||0)>0?'':'列車已經停靠，廣播催促乘客下車，但玩家還沒下車。')+'到站與下車由玩家按手環決定，手環資料的位置變成任務世界之前，不要寫列車到站或玩家下車。';
  else if(S.battle&&S.battle.pending)t+='戰鬥正在手環上進行，等玩家送來戰鬥結果再接寫。';
  else t+='現在在第'+S.station.no+'站，時空列寫「第'+S.station.no+'站｜'+S.station.world+'・地點｜距發車 '+S.station.hours+' 小時」。列車停在下車點不會開走。回收物有沒有拿到以上面的「回收物」欄為準，寫「未取得」時不可以寫玩家拿到它，只能寫到接近、看見、被擋住。回到列車由玩家按手環決定，不要自己寫玩家回車。'+(tgtReady(S.station)||S.station.got?'':'「目標位置」寫「還沒找到」時：正文寫玩家探索、問路、找線索的過程，讓目標一步步靠近；等玩家在劇情裡實際抵達或確認了'+(S.station.where||'回收目標')+'的位置，在回覆最後輸出 ```lasttrain\n{"type":"found"}\n``` 。只要確認位置就好，不要寫玩家開始搶奪或戰鬥。')+'敵人只用上面列的種類；敵人撲上來或玩家要動手時，正文停在開打前，可以用 ```lasttrain 程式碼區塊輸出 battle 事件，不可自己把戰鬥寫完。';
  return t+(S.station.onTrain?'':'任務世界裡手環商店是關閉的：任何人（包括隊友）都不能用手環買東西、叫出補給，只能用身上已經有的道具或現場找到的東西；要補給就得撐到回車。')+'買東西與改裝只能由玩家本人在列車上用手環操作，隊友不會替玩家買，也不可代寫購買。）'}
@@ -284,6 +296,7 @@ window.addEventListener('message',function(e){var d=e.data;if(!P||e.source!==P||
  else if(d.t==='story')storyPush(d)
  else if(d.t==='busy'){ST.busy=!!d.on;if(TAB==='story'){var v=$('view'),k=v.scrollTop;render();v.scrollTop=k}}
  else if(d.t==='stat'){}
+ else if(d.t==='conv')convMsg(d)
 });
 
 // ===== AI 事件 =====
@@ -758,6 +771,8 @@ var FOUND_N=3;
 function tgtReady(st){return !!(st.found||st.got||S.test||st.found===undefined)}
 function scoutLv(st){var a=st.acts||0;return a>=4?2:a>=2?1:0}
 function mainFor(st){var m=(st.main||[]).map(function(e){return{k:e.k,n:e.n}});var al=partyList().filter(function(p){return p.state==='ok'}).length;if(st.no<=3&&m.length)m[0].n=Math.max(1,m[0].n-(al?0:1));else if(st.no<=8&&!al)m.forEach(function(e){e.n=Math.max(1,Math.round(e.n*0.6))});for(var k_=scoutLv(st);k_>0;k_--){var g_=null;m.forEach(function(e){if(e.n>1&&(!g_||e.n>g_.n))g_=e});if(g_)g_.n--}return m}
+ACT.cvGo=function(){closeModal();if(CV.nid)S.conv=CV.nid;S.everUser=false;note('玩家換了一個新對話，從目前進度接續。請依照手環資料重新描寫玩家現在所在的場景與身邊的人，不要從頭開始、不要重演開場。');persist();TAB='story';render();storySay('【接續進度】我換了一個新對話。請依照手環資料，從我現在的處境接著寫。',true)};
+ACT.cvNew=function(){closeModal();try{if(S.conv)cvSave(S.conv,JSON.stringify(S));var f=fresh();f.conv=CV.nid||'';localStorage.setItem(KEY,JSON.stringify(f))}catch(e){}location.reload()};
 ACT.testMode=function(){S.test=!S.test;toast(S.test?'測試模式已開啟':'測試模式已關閉');persist();render()};
 ACT.goTarget2=function(){closeModal();var st=S.station;startBattle({terrain:st.ter,enemies:mainFor(st),goal:st.goal,scale:'full',where:st.where,_p:1,_target:1});persist();render()};
 ACT.board=function(){var st=S.station;if(st.onTrain||S.dead)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}modal('<h3>🚃 回到列車</h3><div class="mut">'+(st.got?'你帶著「'+esc(st.target)+'」，回車可拿 '+targetPts(st.no)+' 積分。':'⚠ 你還沒拿到「'+esc(st.target)+'」，現在回車沒有主線積分。')+'<br>回車後這一站就不能再下車。</div><div class="btns"><button class="btn amb" data-act="board2">回車</button><button class="btn" data-act="closeModal">再等等</button></div>')};
