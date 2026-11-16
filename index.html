@@ -249,7 +249,7 @@ function avatarHtml(p,cls){var src=p&&p.avatar&&IMG_BASE?avUrl(p.avatar):'';var 
 
 // ===== 與載入器溝通 =====
 function post(m){if(P)try{P.postMessage(Object.assign({lt:1},m),'*')}catch(e){}}
-function tailFor(){var t='\n（以上是手環資料：數值以此為準，不要自行計算。每回合都要有時空列、正文、2到4個行動按鈕、狀態欄。';
+function tailFor(){var t='\n（以上是手環資料：數值以此為準，不要自行計算。狀態欄的積分一律照抄手環資料的「積分」（現在是'+S.pts+'），只寫玩家自己的積分，不寫隊友或其他人的積分；積分只會因手環事件改變，正文不可寫成玩家把身上的武器、護具賣掉或回收換積分。每回合都要有時空列、正文、2到4個行動按鈕、狀態欄。';
  if(S.battle&&S.battle.pending)t+='戰鬥正在手環上進行，等玩家送來戰鬥結果再接寫。';
  else if(S.station.onTrain)t+='現在在列車上，時空列寫「列車上｜車廂｜'+((S.station.wait||0)>0?trainClock().text+'・距下一站 '+S.station.wait+' 小時':'已到站')+'」，不可以寫第幾站。車上的人在哪裡、在做什麼，照現在的時段寫。'+((S.station.wait||0)>0?'':'列車已經停靠，廣播催促乘客下車，但玩家還沒下車。')+'到站與下車由玩家按手環決定，手環資料的位置變成任務世界之前，不要寫列車到站或玩家下車。';
  else if(S.battle&&S.battle.pending)t+='戰鬥正在手環上進行，等玩家送來戰鬥結果再接寫。';
