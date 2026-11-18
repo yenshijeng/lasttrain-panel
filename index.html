@@ -112,8 +112,208 @@ label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
 <div id="toast"></div>
 <div id="modal"><div class="box" id="mbox"></div></div>
 <script>
+/* lt-store v1.0 — LunaTalk 面板共用存檔模組
+ * 底層 IndexedDB，前面放一層記憶體快取：
+ *   - 開機時 await store.ready（一次把這款遊戲的資料全部讀進記憶體）
+ *   - 之後 get/set/del 都是同步的，寫入在背景合併送進 IndexedDB
+ *   - 舊的 localStorage 存檔會自動搬過來，確認寫入成功後才刪掉舊的
+ *   - IndexedDB 打不開時退回 localStorage（跟舊版行為一樣），再不行就只存在記憶體
+ * 用法：
+ *   const S = LTStore.create('kaiju8', {migrate:['kaiju.','kj.']});
+ *   S.onError = e => 顯示「存檔失敗」;
+ *   await S.ready;  S.get(k) / S.set(k, 字串) / S.del(k) / S.keys(前綴)
+ *   S.mode: 'idb' | 'local' | 'memory'
+ */
+(function (G) {
+  if (G.LTStore) return;
+  var DBN = 'yenshijeng-lt-store', ST = 'kv', VER = 1, SEP = '\u0001';
+  var dbP = null;
+
+  function openDB() {
+    return new Promise(function (res, rej) {
+      var done = false, r;
+      function fail(e) { if (!done) { done = true; rej(e); } }
+      setTimeout(function () { fail(new Error('IndexedDB 開啟逾時')); }, 4000);
+      try { r = indexedDB.open(DBN, VER); } catch (e) { fail(e); return; }
+      r.onupgradeneeded = function () {
+        var db = r.result;
+        if (!db.objectStoreNames.contains(ST)) db.createObjectStore(ST);
+      };
+      r.onsuccess = function () {
+        if (done) { try { r.result.close(); } catch (e) {} return; }
+        done = true; var db = r.result;
+        db.onversionchange = function () { try { db.close(); } catch (e) {} dbP = null; };
+        res(db);
+      };
+      r.onerror = function () { fail(r.error || new Error('IndexedDB 開啟失敗')); };
+      r.onblocked = function () { fail(new Error('IndexedDB 被其他分頁鎖住')); };
+    });
+  }
+  function getDB() { if (!dbP) dbP = openDB().catch(function (e) { dbP = null; throw e; }); return dbP; }
+
+  function lsOK() {
+    try { localStorage.setItem('__lt_probe', '1'); localStorage.removeItem('__lt_probe'); return true; }
+    catch (e) { return false; }
+  }
+  function lsKeys(prefixes) {
+    var o = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && prefixes.some(function (p) { return k.indexOf(p) === 0; })) o.push(k);
+      }
+    } catch (e) {}
+    return o;
+  }
+
+  function create(ns, opt) {
+    opt = opt || {};
+    var P = ns + SEP, prefixes = opt.migrate || [];
+    var cache = new Map(), dirty = new Map(), timer = 0, chain = Promise.resolve(), bc = null;
+    var S = { ns: ns, mode: 'loading', migrated: 0, lastError: null, onError: null };
+
+    function report(e, where) {
+      S.lastError = { at: Date.now(), where: where, msg: String((e && (e.message || e.name)) || e) };
+      try { if (S.onError) S.onError(S.lastError); } catch (x) {}
+    }
+
+    /* ---- 同步介面 ---- */
+    S.get = function (k) { var v = cache.get(k); return v === undefined ? null : v; };
+    S.has = function (k) { return cache.has(k); };
+    S.keys = function (prefix) {
+      var o = []; cache.forEach(function (v, k) { if (!prefix || k.indexOf(prefix) === 0) o.push(k); }); return o;
+    };
+    S.set = function (k, v) { v = String(v); cache.set(k, v); dirty.set(k, v); schedule(); };
+    S.del = function (k) { cache.delete(k); dirty.set(k, null); schedule(); };
+
+    /* ---- 背景寫入 ---- */
+    function schedule() {
+      if (S.mode === 'loading' || timer) return;
+      timer = setTimeout(function () { timer = 0; S.flush(); }, opt.delay == null ? 30 : opt.delay);
+    }
+    function writeIDB(batch) {
+      return getDB().then(function (db) {
+        return new Promise(function (res, rej) {
+          var tx = db.transaction(ST, 'readwrite'), st = tx.objectStore(ST);
+          batch.forEach(function (v, k) { if (v === null) st.delete(P + k); else st.put(v, P + k); });
+          tx.oncomplete = function () { res(); };
+          tx.onerror = function () { rej(tx.error || new Error('寫入失敗')); };
+          tx.onabort = function () { rej(tx.error || new Error('寫入中止')); };
+        });
+      });
+    }
+    function writeLocal(batch) {
+      batch.forEach(function (v, k) { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); });
+      return Promise.resolve();
+    }
+    function write(batch) {
+      if (S.mode === 'idb') return writeIDB(batch);
+      if (S.mode === 'local') return writeLocal(batch);
+      return Promise.resolve();
+    }
+    S.flush = function () {
+      if (timer) { clearTimeout(timer); timer = 0; }
+      if (S.mode === 'loading' || !dirty.size) return chain;
+      var batch = dirty; dirty = new Map();
+      chain = chain.then(function () { return write(batch); }).then(function () {
+        if (bc) { var o = {}; batch.forEach(function (v, k) { o[k] = v; }); try { bc.postMessage(o); } catch (e) {} }
+      }, function (e) {
+        batch.forEach(function (v, k) { if (!dirty.has(k)) dirty.set(k, v); });
+        report(e, 'write');
+      });
+      return chain;
+    };
+
+    /* ---- 開機：讀取＋搬家 ---- */
+    function readAll(db) {
+      return new Promise(function (res, rej) {
+        var out = [], tx = db.transaction(ST, 'readonly'), st = tx.objectStore(ST);
+        var rq = st.openCursor(IDBKeyRange.bound(P, P + '￿'));
+        rq.onsuccess = function () {
+          var c = rq.result;
+          if (c) { out.push([String(c.key).slice(P.length), c.value]); c.continue(); } else res(out);
+        };
+        rq.onerror = function () { rej(rq.error); };
+      });
+    }
+    function migrate() {
+      if (!prefixes.length || !lsOK()) return Promise.resolve();
+      var moved = new Map();
+      lsKeys(prefixes).forEach(function (k) {
+        if (cache.has(k) || dirty.has(k)) return;
+        var v = localStorage.getItem(k); if (v === null) return;
+        cache.set(k, v); moved.set(k, v);
+      });
+      if (!moved.size) return Promise.resolve();
+      return writeIDB(moved).then(function () {
+        return getDB().then(readAll);
+      }).then(function (rows) {
+        var got = new Map(rows);
+        moved.forEach(function (v, k) {
+          if (got.get(k) === v && opt.removeLegacy !== false) { try { localStorage.removeItem(k); } catch (e) {} }
+        });
+        S.migrated = moved.size;
+      }).catch(function (e) {
+        /* 搬家失敗：舊資料原封不動留在 localStorage，快取裡已有，之後的正常寫入會再試 */
+        moved.forEach(function (v, k) { if (!dirty.has(k)) dirty.set(k, v); });
+        report(e, 'migrate');
+      });
+    }
+    function loadLocal() {
+      lsKeys(prefixes).forEach(function (k) { if (!dirty.has(k)) cache.set(k, localStorage.getItem(k)); });
+    }
+
+    S.ready = (function () {
+      var hasIDB = false; try { hasIDB = !!G.indexedDB; } catch (e) {}
+      var p = hasIDB ? getDB().then(readAll) : Promise.reject(new Error('沒有 IndexedDB'));
+      return p.then(function (rows) {
+        rows.forEach(function (r) { if (!dirty.has(r[0])) cache.set(r[0], r[1]); });
+        S.mode = 'idb';
+        return migrate();
+      }, function (e) {
+        report(e, 'open');
+        if (lsOK()) { S.mode = 'local'; loadLocal(); } else S.mode = 'memory';
+      }).then(function () {
+        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+        try {
+          if (S.mode !== 'memory' && G.BroadcastChannel) {
+            bc = new BroadcastChannel('lt-store:' + ns);
+            bc.onmessage = function (ev) {
+              var o = ev.data || {};
+              for (var k in o) { if (dirty.has(k)) continue; if (o[k] === null) cache.delete(k); else cache.set(k, o[k]); }
+            };
+          }
+        } catch (e) {}
+        S.flush();
+        return S;
+      });
+    })();
+
+    S.usage = function () {
+      var bytes = 0; cache.forEach(function (v, k) { bytes += (k.length + v.length) * 2; });
+      var r = { mode: S.mode, keys: cache.size, approxKB: Math.round(bytes / 1024) };
+      if (!(navigator.storage && navigator.storage.estimate)) return Promise.resolve(r);
+      return navigator.storage.estimate().then(function (e) { r.originUsage = e.usage; r.originQuota = e.quota; return r; }, function () { return r; });
+    };
+
+    function flushNow() { try { S.flush(); } catch (e) {} }
+    G.addEventListener('pagehide', flushNow);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushNow(); });
+    return S;
+  }
+
+  G.LTStore = { version: '1.0', create: create };
+})(window);
+
+</script>
+<script>
 (function(){
 'use strict';
+var KS=LTStore.create('mbc',{migrate:['lt.save.','lt.c.','lt.cidx']});
+var EARLY=[];function earlyMsg(e){EARLY.push(e)}window.addEventListener('message',earlyMsg);
+function saveErr(m){var b=document.getElementById('saveerr');if(!b){b=document.createElement('div');b.id='saveerr';b.setAttribute('style','position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:99999;background:#7a1f16;color:#fff;border:1px solid #e2705f;border-radius:8px;padding:8px 12px;font:13px/1.5 sans-serif;text-align:left');document.body.appendChild(b)}b.textContent='⚠ 存檔出問題：'+m+'（進度可能沒有存下來，請先不要關閉頁面）'}
+KS.onError=function(e){saveErr(e.where+'：'+e.msg)};
+KS.ready.then(function(){
 var VER='1.0.0', KEY='lt.save.v1';
 // 圖片網址前綴：圖片上傳後填入（結尾要有 /）。留空時顯示名字首字。
 var IMG_BASE='img/av/';function avUrl(n){return IMG_BASE+String(n||'').replace(/\.png$/,'.webp')}
@@ -236,17 +436,18 @@ var TER_ALIAS={'月台':'走廊','隧道':'走廊','室外':'開闊地','荒野'
 // ===== 存檔 =====
 function fresh(){return{v:1,started:false,name:'',lv:1,hp:100,pts:50,weapons:[{k:'pistol',t:1}],active:0,armor:'vest',imp:{eye:0,arm:0,leg:0,torso:0,nerve:0},items:{spray:0,smoke:0,grenade:0,ammo:0},room:{open:false,zones:[]},station:{no:0,world:'',target:'',hours:0,onTrain:true,wait:6},roster:[],party:[],notes:[],log:[],processed:[],battle:null,tutDone:false,tourDone:false,dead:false,lastResult:null}}
 var S;
-function load(){try{var t=localStorage.getItem(KEY);if(t){var o=JSON.parse(t);if(o&&o.v===1)return o}}catch(e){}return null}
-function persist(){try{S.bsv=(typeof B!=='undefined'&&B&&B.units&&!B.res)?B:null;var j_=JSON.stringify(S);localStorage.setItem(KEY,j_);if(S.conv&&S.started)cvSave(S.conv,j_)}catch(e){}arm()}
-function cvSave(id,j){try{localStorage.setItem('lt.c.'+id,j);var ix=[];try{ix=JSON.parse(localStorage.getItem('lt.cidx')||'[]')}catch(e){}ix=ix.filter(function(x){return x!==id});ix.push(id);while(ix.length>6){localStorage.removeItem('lt.c.'+ix.shift())}localStorage.setItem('lt.cidx',JSON.stringify(ix))}catch(e){}}
+function load(){try{var t=KS.get(KEY);if(t){var o=JSON.parse(t);if(o&&o.v===1)return o}}catch(e){}return null}
+function persist(){try{S.bsv=(typeof B!=='undefined'&&B&&B.units&&!B.res)?B:null;var j_=JSON.stringify(S);KS.set(KEY,j_);if(S.conv&&S.started)cvSave(S.conv,j_)}catch(e){}arm()}
+function cvSave(id,j){try{KS.set('lt.c.'+id,j);var ix=[];try{ix=JSON.parse(KS.get('lt.cidx')||'[]')}catch(e){}ix=ix.filter(function(x){return x!==id});ix.push(id);while(ix.length>6){KS.del('lt.c.'+ix.shift())}KS.set('lt.cidx',JSON.stringify(ix))}catch(e){}}
+function reloadSoon(){var d=false;function go(){if(!d){d=true;location.reload()}}KS.flush().then(go,go);setTimeout(go,1500)}
 var CV={asked:'',fb:false};
 function convMsg(d){var id=d.id?String(d.id):'';
- if(!S.started){if(id&&S.conv!==id){S.conv=id;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}return}
+ if(!S.started){if(id&&S.conv!==id){S.conv=id;try{KS.set(KEY,JSON.stringify(S))}catch(e){}}return}
  if(!id){if(d.u>0){if(!S.everUser){S.everUser=true;persist()}return}if(S.everUser&&!CV.fb){CV.fb=true;convAsk('')}return}
  if(d.u>0&&!S.everUser){S.everUser=true}
  if(!S.conv){S.conv=id;persist();return}
  if(S.conv===id)return;
- try{cvSave(S.conv,JSON.stringify(S));var o=localStorage.getItem('lt.c.'+id);if(o){var x=JSON.parse(o);if(x&&x.v===1&&x.started){localStorage.setItem(KEY,o);location.reload();return}}}catch(e){}
+ try{cvSave(S.conv,JSON.stringify(S));var o=KS.get('lt.c.'+id);if(o){var x=JSON.parse(o);if(x&&x.v===1&&x.started){KS.set(KEY,o);reloadSoon();return}}}catch(e){}
  if(CV.asked===id)return;CV.asked=id;convAsk(id)}
 function convAsk(id){CV.nid=id;modal('<div data-lock><h3>⌚ 這是另一個對話</h3><div class="mut">手環裡有'+esc(S.name||'你')+'的進度（第 '+(S.station.no||0)+' 站、積分 '+S.pts+'），但這個對話不是原本那一個。<br><br><b>接續進度</b>：把目前的進度帶到這個對話，AI 會從現在的場景接著寫。適合原本的對話太長、想換新對話繼續玩。<br><b>重新開始</b>：開一局新的。舊進度會保留，切回原本的對話時手環會自動載回。</div><div class="btns"><button class="btn amb" data-act="cvGo">接續進度</button><button class="btn red" data-act="cvNew">重新開始</button></div></div>')}
 
@@ -494,7 +695,7 @@ function sysHtml(){return '<h3>存檔</h3><div class="card"><div class="mut">存
  '<h3>手動貼上 AI 區塊</h3><div class="card"><div class="mut">如果手環沒自動讀到 AI 回覆裡的 lasttrain 區塊，把那段複製貼在這裡。</div><textarea id="man"></textarea><button class="btn wide" data-act="manual">套用</button></div>'+
  '<h3>說明</h3><div class="card"><button class="btn wide" data-act="tour">重看手環說明</button></div>'+
  '<h3>測試模式</h3><div class="card"><div class="mut">開啟後，下車就能直接前往回收目標，不用先探索。給作者測試用。</div><button class="btn wide'+(S.test?' amb':'')+'" data-act="testMode">'+(S.test?'測試模式：開（點一下關閉）':'測試模式：關（點一下開啟）')+'</button></div>'+
- '<h3>重新開始</h3><div class="card"><div class="mut">清除這台裝置上的進度。聊天紀錄不會被刪掉，建議同時開一個新對話。</div><button class="btn red wide" data-act="reset">清除進度，重新開始</button></div><div class="mut">手環版本 '+VER+'</div>'}
+ '<h3>重新開始</h3><div class="card"><div class="mut">清除這台裝置上的進度。聊天紀錄不會被刪掉，建議同時開一個新對話。</div><button class="btn red wide" data-act="reset">清除進度，重新開始</button></div><div class="mut">手環版本 '+VER+' · lt-store 1.0 · 存檔：'+({idb:'IndexedDB',local:'localStorage（備援）',memory:'僅記憶體（無法保存）'}[KS.mode]||KS.mode)+'</div>'}
 
 // ===== 動作 =====
 function pay(c){if(S.pts<c){toast('積分不夠');return false}S.pts-=c;return true}
@@ -772,7 +973,7 @@ function tgtReady(st){return !!(st.found||st.got||S.test||st.found===undefined)}
 function scoutLv(st){var a=st.acts||0;return a>=4?2:a>=2?1:0}
 function mainFor(st){var m=(st.main||[]).map(function(e){return{k:e.k,n:e.n}});var al=partyList().filter(function(p){return p.state==='ok'}).length;if(st.no<=3&&m.length)m[0].n=Math.max(1,m[0].n-(al?0:1));else if(st.no<=8&&!al)m.forEach(function(e){e.n=Math.max(1,Math.round(e.n*0.6))});for(var k_=scoutLv(st);k_>0;k_--){var g_=null;m.forEach(function(e){if(e.n>1&&(!g_||e.n>g_.n))g_=e});if(g_)g_.n--}return m}
 ACT.cvGo=function(){closeModal();if(CV.nid)S.conv=CV.nid;S.everUser=false;note('玩家換了一個新對話，從目前進度接續。請依照手環資料重新描寫玩家現在所在的場景與身邊的人，不要從頭開始、不要重演開場。');persist();TAB='story';render();storySay('【接續進度】我換了一個新對話。請依照手環資料，從我現在的處境接著寫。',true)};
-ACT.cvNew=function(){closeModal();try{if(S.conv)cvSave(S.conv,JSON.stringify(S));var f=fresh();f.conv=CV.nid||'';localStorage.setItem(KEY,JSON.stringify(f))}catch(e){}location.reload()};
+ACT.cvNew=function(){closeModal();try{if(S.conv)cvSave(S.conv,JSON.stringify(S));var f=fresh();f.conv=CV.nid||'';KS.set(KEY,JSON.stringify(f))}catch(e){}reloadSoon()};
 ACT.testMode=function(){S.test=!S.test;toast(S.test?'測試模式已開啟':'測試模式已關閉');persist();render()};
 ACT.goTarget2=function(){closeModal();var st=S.station;startBattle({terrain:st.ter,enemies:mainFor(st),goal:st.goal,scale:'full',where:st.where,_p:1,_target:1});persist();render()};
 ACT.board=function(){var st=S.station;if(st.onTrain||S.dead)return;if(ST.busy){toast('AI 還在回覆，請稍等');return}modal('<h3>🚃 回到列車</h3><div class="mut">'+(st.got?'你帶著「'+esc(st.target)+'」，回車可拿 '+targetPts(st.no)+' 積分。':'⚠ 你還沒拿到「'+esc(st.target)+'」，現在回車沒有主線積分。')+'<br>回車後這一站就不能再下車。</div><div class="btns"><button class="btn amb" data-act="board2">回車</button><button class="btn" data-act="closeModal">再等等</button></div>')};
@@ -795,6 +996,11 @@ if(location.hostname==='localhost')window.__ev=function(c){return eval(c)};
 render();post({t:'hello'});arm();if(!S.started)post({t:'hint',s:'先啟用手環'});if(S.battle&&S.battle.pending)post({t:'want',open:true});
 if(S.started&&!S.tourDone)showTour();
 window.LTP={ingest:ingest,state:function(){return S},ver:VER};
+window.__mbcKS=KS;
+window.removeEventListener('message',earlyMsg);
+EARLY.splice(0).forEach(function(e){try{window.dispatchEvent(new MessageEvent('message',{data:e.data,source:e.source,origin:e.origin}))}catch(x){}});
+if(KS.mode==='memory')saveErr('這個瀏覽器不允許存檔');
+}).catch(function(e){saveErr('啟動失敗 '+(e&&e.message||e));if(window.console)console.error(e)});
 })();
 </script>
 </body>
